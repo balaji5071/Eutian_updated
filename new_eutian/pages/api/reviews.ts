@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
-import { ObjectId } from 'mongodb';
+import { ObjectId, type Filter } from 'mongodb';
 
 type Review = {
   _id?: ObjectId;
@@ -32,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (req.method === 'GET') {
       const all = req.query.all === '1' || req.query.all === 'true';
-      const filter = all ? {} : { status: 'visible' };
+      const filter: Filter<Review> = all ? {} : { status: 'visible' };
       const items = await reviews.find(filter).sort({ createdAt: -1 }).limit(200).toArray();
       const mapped = items.map(({ _id, ...rest }) => ({ id: _id?.toString(), ...rest }));
       return res.status(200).json({ ok: true, items: mapped });
