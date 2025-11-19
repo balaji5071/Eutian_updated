@@ -2,6 +2,8 @@
 
 import * as React from "react"
 import * as RechartsPrimitive from "recharts"
+import { TooltipProps } from "recharts"
+import type { ValueType, NameType } from "recharts/types/component/DefaultTooltipContent"
 
 import { cn } from "@/lib/utils"
 
@@ -102,35 +104,33 @@ ${colorConfig
 
 const ChartTooltip = RechartsPrimitive.Tooltip
 
-const ChartTooltipContent = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
-    React.ComponentProps<"div"> & {
-      hideLabel?: boolean
-      hideIndicator?: boolean
-      indicator?: "line" | "dot" | "dashed"
-      nameKey?: string
-      labelKey?: string
-    }
->(
-  (
-    {
+type ChartTooltipContentProps = TooltipProps<ValueType, NameType> &
+  React.ComponentProps<"div"> & {
+    hideLabel?: boolean
+    hideIndicator?: boolean
+    indicator?: "line" | "dot" | "dashed"
+    nameKey?: string
+    labelKey?: string
+    color?: string
+  }
+
+const ChartTooltipContent = React.forwardRef<HTMLDivElement, ChartTooltipContentProps>(
+  (props, ref) => {
+    const {
       active,
       payload,
+      label,
       className,
       indicator = "dot",
       hideLabel = false,
       hideIndicator = false,
-      label,
       labelFormatter,
       labelClassName,
       formatter,
       color,
       nameKey,
       labelKey,
-    },
-    ref
-  ) => {
+    } = props
     const { config } = useChart()
 
     const tooltipLabel = React.useMemo(() => {
@@ -169,7 +169,7 @@ const ChartTooltipContent = React.forwardRef<
       labelKey,
     ])
 
-    if (!active || !payload?.length) {
+    if (!active || !payload || payload.length === 0) {
       return null
     }
 
