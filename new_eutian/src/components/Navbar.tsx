@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'wouter';
+import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function Navbar() {
-  const [location] = useLocation();
+  const router = useRouter();
+  const location = router.pathname;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navLinks = [

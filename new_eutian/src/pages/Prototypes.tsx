@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +15,7 @@ export default function Prototypes() {
 
   const categories = ['All', 'SaaS', 'E-Commerce', 'Landing Page', 'AI/ML'];
 
-  const prototypes = [
+  const staticPrototypes = [
     {
       title: 'Analytics Dashboard',
       image: saasImage.src,
@@ -49,9 +50,30 @@ export default function Prototypes() {
     },
   ];
 
-  const filteredPrototypes = selectedCategory === 'All'
-    ? prototypes
-    : prototypes.filter(p => p.category === selectedCategory);
+  const { data: dbPrototypes } = useQuery({
+    queryKey: ['prototypes-public'],
+    queryFn: async () => {
+      const r = await fetch('/api/prototypes');
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'Failed to fetch prototypes');
+      // Map to the same shape as card expects
+      return (j.items as any[]).map(p => ({
+        title: p.title,
+        image: p.image,
+        category: p.category,
+        description: p.description,
+        techStack: p.techStack || [],
+        features: p.features || [],
+      }));
+    },
+    staleTime: 60_000,
+  });
+
+  const prototypes = (dbPrototypes && dbPrototypes.length > 0) ? dbPrototypes : staticPrototypes;
+
+  const filteredPrototypes = useMemo(() => (
+    selectedCategory === 'All' ? prototypes : prototypes.filter(p => p.category === selectedCategory)
+  ), [selectedCategory, prototypes]);
 
   return (
     <div className="flex flex-col">

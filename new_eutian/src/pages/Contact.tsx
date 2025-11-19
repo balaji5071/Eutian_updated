@@ -10,12 +10,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useRegion } from '@/lib/region-context';
-import { Mail, Phone, MapPin, Send } from 'lucide-react';
+import { Mail, Phone, Clock, Send } from 'lucide-react';
 import { SiWhatsapp } from 'react-icons/si';
 
 const contactFormSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
+  phone: z.string().min(7, 'Enter a valid phone number'),
+  whatsapp: z.string().min(7, 'Enter a valid WhatsApp number'),
+  websiteType: z.enum(['Landing Page', 'E-Commerce', 'SaaS Dashboard', 'Portfolio', 'Blog', 'Custom']),
   region: z.enum(['India', 'Global']),
   message: z.string().min(10, 'Message must be at least 10 characters'),
 });
@@ -24,7 +27,7 @@ type ContactFormValues = z.infer<typeof contactFormSchema>;
 
 export default function Contact() {
   const { toast } = useToast();
-  const { region, phone, whatsapp } = useRegion();
+  const { region, phone, whatsapp, whatsappDisplay } = useRegion();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<ContactFormValues>({
@@ -32,6 +35,9 @@ export default function Contact() {
     defaultValues: {
       name: '',
       email: '',
+      phone: '',
+      whatsapp: '',
+      websiteType: 'Landing Page',
       region: region,
       message: '',
     },
@@ -39,17 +45,32 @@ export default function Contact() {
 
   const onSubmit = async (data: ContactFormValues) => {
     setIsSubmitting(true);
-    console.log('Form submitted:', data);
-    
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    toast({
-      title: 'Message sent!',
-      description: 'We\'ll get back to you within 24 hours.',
-    });
-    
-    form.reset();
-    setIsSubmitting(false);
+    try {
+      const res = await fetch('/api/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(payload?.error || 'Failed to submit');
+      }
+
+      toast({
+        title: 'Message sent!',
+        description: 'We\'ll get back to you within 24 hours.',
+      });
+      form.reset();
+    } catch (e: any) {
+      toast({
+        title: 'Submission failed',
+        description: e?.message || 'Please try again later.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -72,6 +93,59 @@ export default function Contact() {
               </h2>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                                    <FormField
+                                      control={form.control}
+                                      name="phone"
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel>Phone Number</FormLabel>
+                                          <FormControl>
+                                            <Input placeholder="e.g. +91 6302371238" {...field} data-testid="input-phone" />
+                                          </FormControl>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
+
+                                    <FormField
+                                      control={form.control}
+                                      name="whatsapp"
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel>WhatsApp Number</FormLabel>
+                                          <FormControl>
+                                            <Input placeholder="digits only for WhatsApp links" {...field} data-testid="input-whatsapp" />
+                                          </FormControl>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
+
+                                    <FormField
+                                      control={form.control}
+                                      name="websiteType"
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel>Website Type</FormLabel>
+                                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl>
+                                              <SelectTrigger data-testid="select-website-type">
+                                                <SelectValue placeholder="Select a website type" />
+                                              </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                              <SelectItem value="Landing Page">Landing Page</SelectItem>
+                                              <SelectItem value="E-Commerce">E-Commerce</SelectItem>
+                                              <SelectItem value="SaaS Dashboard">SaaS Dashboard</SelectItem>
+                                              <SelectItem value="Portfolio">Portfolio</SelectItem>
+                                              <SelectItem value="Blog">Blog</SelectItem>
+                                              <SelectItem value="Custom">Custom</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
                   <FormField
                     control={form.control}
                     name="name"
@@ -196,20 +270,19 @@ export default function Contact() {
                         className="text-muted-foreground hover:text-primary transition-colors"
                         data-testid="link-whatsapp"
                       >
-                        {whatsapp}
+                        {whatsappDisplay}
                       </a>
                     </div>
                   </div>
 
                   <div className="flex items-start gap-4">
                     <div className="p-3 bg-primary/10 rounded-lg">
-                      <MapPin className="h-6 w-6 text-primary" />
+                      <Clock className="h-6 w-6 text-primary" />
                     </div>
                     <div>
                       <h3 className="font-semibold mb-1">Office Hours</h3>
                       <p className="text-muted-foreground" data-testid="text-office-hours">
-                        Monday - Friday<br />
-                        9:00 AM - 6:00 PM IST
+                        24/7
                       </p>
                     </div>
                   </div>

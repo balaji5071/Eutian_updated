@@ -1,5 +1,5 @@
-import { Link } from 'wouter';
-import { Mail, Phone, Linkedin, Twitter, Github } from 'lucide-react';
+import Link from 'next/link';
+import { Mail, Phone, Linkedin, Twitter, Github, Clock } from 'lucide-react';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -57,7 +57,11 @@ export default function Footer() {
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="h-4 w-4" />
-                <span data-testid="text-footer-phone">+91 98765 43210</span>
+                <span data-testid="text-footer-phone">+91 6302371238</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                <span data-testid="text-footer-hours">Office hours: 24/7</span>
               </div>
             </div>
           </div>

@@ -7,7 +7,8 @@ interface RegionContextType {
   setRegion: (region: Region) => void;
   currencySymbol: string;
   phone: string;
-  whatsapp: string;
+  whatsapp: string; // digits only for wa.me links
+  whatsappDisplay: string; // pretty formatted for UI
 }
 
 const RegionContext = createContext<RegionContextType | undefined>(undefined);
@@ -28,11 +29,13 @@ export function RegionProvider({ children }: { children: ReactNode }) {
   };
 
   const currencySymbol = region === 'India' ? '₹' : '$';
-  const phone = region === 'India' ? '+91 98765 43210' : '+1 555 123 4567';
-  const whatsapp = region === 'India' ? '+919876543210' : '+15551234567';
+  const phone = region === 'India' ? '+91 6302371238' : '+1 555 123 4567';
+  // Use digits only for wa.me links, and provide a formatted display string for UI
+  const whatsapp = region === 'India' ? '916302371238' : '15551234567';
+  const whatsappDisplay = region === 'India' ? '+91 63023 71238' : '+1 555 123 4567';
 
   return (
-    <RegionContext.Provider value={{ region, setRegion, currencySymbol, phone, whatsapp }}>
+    <RegionContext.Provider value={{ region, setRegion, currencySymbol, phone, whatsapp, whatsappDisplay }}>
       {children}
     </RegionContext.Provider>
   );

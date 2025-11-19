@@ -2,7 +2,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import PricingCard from '@/components/PricingCard';
 import RegionSelector from '@/components/RegionSelector';
-import { Link } from 'wouter';
+import Link from 'next/link';
 import { Check } from 'lucide-react';
 
 export default function Pricing() {

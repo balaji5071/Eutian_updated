@@ -1,7 +1,7 @@
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Link } from 'wouter';
+import Link from 'next/link';
 import { Laptop, Gauge, MessageSquare, Search, GraduationCap, ArrowRight } from 'lucide-react';
 import { useRegion } from '@/lib/region-context';
 import servicesImage from '@assets/generated_images/Services_background_pattern_dd2fb331.png';

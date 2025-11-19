@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# Prevent indexing of the admin area
+Disallow: /admin
+Disallow: /eutianadmin
+
+Sitemap: /sitemap.xml
