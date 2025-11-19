@@ -8,9 +8,13 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/lib/auth-context";
 import { RegionProvider } from "@/lib/region-context";
 import Navbar from "@/components/Navbar";
+import AdminNavbar from "@/components/AdminNavbar";
+import { useRouter } from 'next/router';
 import Footer from "@/components/Footer";
 
 export default function MyApp({ Component, pageProps }: AppProps) {
+  const router = useRouter();
+  const isAdmin = router.pathname === '/eutianadmin';
   return (
     <QueryClientProvider client={queryClient}>
       <Head>
@@ -33,7 +37,7 @@ export default function MyApp({ Component, pageProps }: AppProps) {
         <AuthProvider>
           <RegionProvider>
             <div className="flex flex-col min-h-screen">
-              <Navbar />
+              {isAdmin ? <AdminNavbar /> : <Navbar />}
               <main className="flex-1">
                 <Component {...pageProps} />
               </main>
