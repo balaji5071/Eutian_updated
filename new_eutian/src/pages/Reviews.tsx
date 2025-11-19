@@ -15,7 +15,8 @@ type ReviewItem = { id: string; name: string; email?: string; rating: number; me
 const schema = z.object({
   name: z.string().min(2, 'Name is required'),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
-  rating: z.coerce.number().min(1, 'Min 1').max(5, 'Max 5'),
+  // Use strict number schema; convert string input in component onChange
+  rating: z.number().min(1, 'Min 1').max(5, 'Max 5'),
   message: z.string().min(10, 'Please share at least 10 characters'),
 });
 type FormValues = z.infer<typeof schema>;
@@ -100,7 +101,18 @@ export default function ReviewsPage() {
                   <FormField name="rating" control={form.control} render={({ field }) => (
                     <FormItem>
                       <FormLabel>Rating (1-5)</FormLabel>
-                      <FormControl><Input type="number" min={1} max={5} {...field} /></FormControl>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={5}
+                          {...field}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            field.onChange(value === '' ? '' : Number(value));
+                          }}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
