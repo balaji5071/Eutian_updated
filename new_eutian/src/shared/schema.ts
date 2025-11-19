@@ -6,3 +6,4 @@ export const insertAdminSchema = z.object({
 });
 
 export type Admin = z.infer<typeof insertAdminSchema>;
+  
