@@ -9,7 +9,8 @@
   --opaque-button-border-intensity: -8;
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
-  --background: 0 0% 100%;
+  /* Global background color: #c5c6c7 */
+  --background: 210 2% 78%;
   --foreground: 220 13% 13%;
   --border: 0 0% 90%;
   --card: 0 0% 98%;
@@ -28,7 +29,8 @@
   --popover-border: 0 0% 90%;
   --primary: 152 85% 23%;
   --primary-foreground: 152 85% 98%;
-  --secondary: 0 0% 88%;
+  /* Secondary color: white */
+  --secondary: 0 0% 100%;
   --secondary-foreground: 220 13% 13%;
   --muted: 0 0% 90%;
   --muted-foreground: 220 13% 45%;

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -11,6 +11,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useRegion } from '@/lib/region-context';
 import { Mail, Phone, Clock, Send } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction
+} from '@/components/ui/alert-dialog';
 import { SiWhatsapp } from 'react-icons/si';
 
 const contactFormSchema = z.object({
@@ -29,6 +38,7 @@ export default function Contact() {
   const { toast } = useToast();
   const { region, phone, whatsapp, whatsappDisplay } = useRegion();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const form = useForm<ContactFormValues>({
     resolver: zodResolver(contactFormSchema),
@@ -42,6 +52,41 @@ export default function Contact() {
       message: '',
     },
   });
+
+  // Map prototype category to websiteType enum
+  const mapCategoryToWebsiteType = (cat: string): ContactFormValues['websiteType'] => {
+    switch (cat) {
+      case 'SaaS':
+        return 'SaaS Dashboard';
+      case 'E-Commerce':
+        return 'E-Commerce';
+      case 'Landing Page':
+        return 'Landing Page';
+      default:
+        return 'Custom';
+    }
+  };
+
+  // Auto-fill from query params (prototype, category, desc)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const proto = params.get('prototype');
+    const category = params.get('category');
+    const desc = params.get('desc');
+    if (proto || category || desc) {
+      if (category) {
+        form.setValue('websiteType', mapCategoryToWebsiteType(category));
+      }
+      const baseMessage = form.getValues('message');
+      if (!baseMessage) {
+        const composed = `Interested in a similar project: ${proto || ''}${desc ? `. Description: ${desc}` : ''}`.trim();
+        // Ensure minimum length for validation; fall back if too short
+        form.setValue('message', composed.length >= 10 ? composed : `${composed} Please contact me.`);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const onSubmit = async (data: ContactFormValues) => {
     setIsSubmitting(true);
@@ -57,11 +102,12 @@ export default function Contact() {
         throw new Error(payload?.error || 'Failed to submit');
       }
 
+      form.reset();
+      setShowSuccess(true);
       toast({
         title: 'Message sent!',
-        description: 'We\'ll get back to you within 24 hours.',
+        description: 'We\'ll get back to you within 24 hours.'
       });
-      form.reset();
     } catch (e: any) {
       toast({
         title: 'Submission failed',
@@ -75,6 +121,19 @@ export default function Contact() {
 
   return (
     <div className="flex flex-col">
+      <AlertDialog open={showSuccess} onOpenChange={setShowSuccess}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Message Sent ✅</AlertDialogTitle>
+            <AlertDialogDescription>
+              Thank you! We received your inquiry and will respond within 24 hours. You can submit another message or close this dialog.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowSuccess(false)}>Close</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <section className="py-20 bg-muted/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -121,31 +180,31 @@ export default function Contact() {
                                       )}
                                     />
 
-                                    <FormField
-                                      control={form.control}
-                                      name="websiteType"
-                                      render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel>Website Type</FormLabel>
-                                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                            <FormControl>
-                                              <SelectTrigger data-testid="select-website-type">
-                                                <SelectValue placeholder="Select a website type" />
-                                              </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                              <SelectItem value="Landing Page">Landing Page</SelectItem>
-                                              <SelectItem value="E-Commerce">E-Commerce</SelectItem>
-                                              <SelectItem value="SaaS Dashboard">SaaS Dashboard</SelectItem>
-                                              <SelectItem value="Portfolio">Portfolio</SelectItem>
-                                              <SelectItem value="Blog">Blog</SelectItem>
-                                              <SelectItem value="Custom">Custom</SelectItem>
-                                            </SelectContent>
-                                          </Select>
-                                          <FormMessage />
-                                        </FormItem>
-                                      )}
-                                    />
+                  <FormField
+                    control={form.control}
+                    name="websiteType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Website Type</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-website-type">
+                              <SelectValue placeholder="Select a website type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Landing Page">Landing Page</SelectItem>
+                            <SelectItem value="E-Commerce">E-Commerce</SelectItem>
+                            <SelectItem value="SaaS Dashboard">SaaS Dashboard</SelectItem>
+                            <SelectItem value="Portfolio">Portfolio</SelectItem>
+                            <SelectItem value="Blog">Blog</SelectItem>
+                            <SelectItem value="Custom">Custom</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <FormField
                     control={form.control}
                     name="name"

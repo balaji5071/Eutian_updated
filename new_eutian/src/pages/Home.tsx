@@ -62,7 +62,7 @@ export default function Home() {
         style={{
           backgroundImage: `linear-gradient(rgba(3, 39, 19, 0.7), rgba(3, 39, 19, 0.7)), url(${heroImage.src})`,
         }}
-      >
+      > 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
           <h1
             className="font-heading font-bold text-4xl sm:text-5xl lg:text-6xl text-white mb-6 tracking-tight"

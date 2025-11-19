@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import PrototypeCard from '@/components/PrototypeCard';
@@ -158,9 +159,16 @@ export default function Prototypes() {
                   </ul>
                 </div>
                 <div className="flex gap-4 pt-4">
-                  <Button className="flex-1" data-testid="button-modal-contact">
-                    Contact Us for Similar Project
-                  </Button>
+                  <Link
+                    href={`/contact?prototype=${encodeURIComponent(selectedPrototype.title)}&category=${encodeURIComponent(selectedPrototype.category)}&desc=${encodeURIComponent(selectedPrototype.description.slice(0,160))}`}
+                    onClick={() => setSelectedPrototype(null)}
+                    data-testid="link-modal-contact"
+                    className="flex-1"
+                  >
+                    <Button className="w-full" data-testid="button-modal-contact">
+                      Contact Us for Similar Project
+                    </Button>
+                  </Link>
                 </div>
               </div>
             </>

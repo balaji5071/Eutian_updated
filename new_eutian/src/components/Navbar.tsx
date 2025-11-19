@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import logo from '@/assets/generated_images/logo.png';
 
 export default function Navbar() {
   const router = useRouter();
@@ -13,19 +15,27 @@ export default function Navbar() {
     { href: '/', label: 'Home' },
     { href: '/services', label: 'Services' },
     { href: '/prototypes', label: 'Prototypes' },
+    { href: '/reviews', label: 'Reviews' },
     { href: '/pricing', label: 'Pricing' },
     { href: '/about', label: 'About' },
     { href: '/contact', label: 'Contact' },
   ];
 
   return (
-    <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+    <nav className="sticky top-0 z-50 bg-white border-b">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <Link href="/" data-testid="link-logo">
-            <div className="flex items-center gap-2 cursor-pointer">
-              <div className="w-8 h-8 bg-primary rounded-md"></div>
-              <span className="font-heading text-xl font-bold text-foreground">Eutian</span>
+            <div className="flex items-center cursor-pointer">
+              <Image
+                src={logo}
+                alt="Eutian logo"
+                width={40}
+                height={40}
+                className="rounded-md"
+                priority
+              />
+              
             </div>
           </Link>
 

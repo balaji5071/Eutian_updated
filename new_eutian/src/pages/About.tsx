@@ -1,4 +1,4 @@
-import { Card } from '@/components/ui/card';
+import { Card as UiCard } from '@/components/ui/card';
 import FounderCard from '@/components/FounderCard';
 import { Target, Eye, Globe } from 'lucide-react';
 import founder1 from '@assets/generated_images/Founder_profile_photo_1_96bc376f.png';
@@ -10,59 +10,84 @@ export default function About() {
   const founders = [
     {
       name: 'Balaji',
-      role: 'Co-Founder & CEO',
-      bio: 'Full-stack developer with 8 years of experience building scalable web applications. Passionate about delivering quality solutions on time.',
+      role: 'Founder & Chief Executive Officer (CEO)',
+      bio: 'Sets company vision and strategy, leads external partnerships, and ensures Eutian stays aligned with its mission to build intelligent digital solutions.',
       image: founder1.src,
       linkedin: 'https://linkedin.com',
+      ownership: '25%',
+    },
+    {
+      name: 'Srikar',
+      role: 'Co-Founder & Chief Operating Officer (COO)',
+      bio: 'Manages day-to-day operations, project execution, and cross-team coordination to ensure timely delivery and quality standards.',
+      image: founder3.src,
+      linkedin: 'https://linkedin.com',
+      ownership: '25%',
     },
     {
       name: 'Jnanesh',
-      role: 'Co-Founder & CTO',
-      bio: 'Expert in modern web technologies and cloud architecture. Specializes in building high-performance SaaS platforms.',
+      role: 'Co-Founder & Chief Financial & Media Officer (CFMO)',
+      bio: 'Oversees financial health (budgeting, accounting) and leads media & brand strategy to shape Eutian’s public image and communications.',
       image: founder2.src,
       linkedin: 'https://linkedin.com',
-    },  
-    {  
-      name: 'Srikar',
-      role: 'Co-Founder & Lead Developer',
-      bio: 'Frontend specialist with a passion for creating beautiful, user-friendly interfaces. 6 years in the industry.',
-      image: founder3.src,
-      linkedin: 'https://linkedin.com',
+      ownership: '25%',
     },
     {
       name: 'Sai Kumar',
-      role: 'Co-Founder & Design Lead',
-      bio: 'UI/UX designer focused on creating intuitive experiences. Combines aesthetics with functionality.',
+      role: 'Co-Founder & Chief Marketing Officer (CMO)',
+      bio: 'Leads marketing, growth, and client acquisition—designing campaigns and partnerships to increase visibility and bring on new customers.',
       image: founder4.src,
       linkedin: 'https://linkedin.com',
+      ownership: '25%',
     },
   ];
 
+  // Fresh Startup Timeline (2025)
   const timeline = [
-    { year: '2020', event: 'Company Founded', description: 'Started with a mission to make quality web development affordable' },
-    { year: '2021', event: '100+ Projects', description: 'Reached milestone of 100 completed projects' },
-    { year: '2022', event: 'Student Program', description: 'Launched special capstone project program for students' },
-    { year: '2023', event: 'Global Expansion', description: 'Expanded services to international markets' },
-    { year: '2024', event: '500+ Clients', description: 'Serving clients across 20+ countries' },
+    {
+      year: '2025',
+      event: 'Eutian Founded',
+      description: 'A group of four students came together with one vision — to build fast, affordable, production-ready websites.',
+    },
+    {
+      year: '2025',
+      event: 'First Projects',
+      description: 'Delivered our first client projects and refined our workflow.',
+    },
+    {
+      year: '2025',
+      event: 'Pilot Capstone Program',
+      description: 'Started helping students with real project websites and documentation.',
+    },
+    {
+      year: '2025',
+      event: 'Early Growth',
+      description: 'Focusing on building trust, quality, and strong foundations.',
+    },
   ];
 
   return (
     <div className="flex flex-col">
+      {/* HERO */}
       <section className="py-20 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p className="text-sm bg-primary/20 inline-block px-4 py-1 rounded-full mb-4">
+            🚀 We just started our journey
+          </p>
           <h1 className="font-heading font-bold text-4xl sm:text-5xl mb-6" data-testid="text-about-title">
             About Eutian
           </h1>
           <p className="text-xl opacity-90 max-w-3xl mx-auto">
-            Building the Intelligent Future — one project at a time
+            A brand-new startup building the Intelligent Future — one project at a time.
           </p>
         </div>
       </section>
 
+      {/* MISSION + VISION */}
       <section className="py-20 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-5xl mx-auto">
-            <Card className="p-8">
+            <UiCard className="p-8">
               <div className="flex items-start gap-4">
                 <div className="p-3 bg-primary/10 rounded-lg">
                   <Target className="h-8 w-8 text-primary" />
@@ -72,13 +97,13 @@ export default function About() {
                     Our Mission
                   </h2>
                   <p className="text-muted-foreground leading-relaxed">
-                    To democratize access to high-quality web development by delivering production-ready solutions at affordable prices with lightning-fast turnaround times.
+                    To help students, startups, and small businesses bring their ideas online quickly with affordable, production-ready solutions.
                   </p>
                 </div>
               </div>
-            </Card>
+            </UiCard>
 
-            <Card className="p-8">
+            <UiCard className="p-8">
               <div className="flex items-start gap-4">
                 <div className="p-3 bg-primary/10 rounded-lg">
                   <Eye className="h-8 w-8 text-primary" />
@@ -88,24 +113,23 @@ export default function About() {
                     Our Vision
                   </h2>
                   <p className="text-muted-foreground leading-relaxed">
-                    To become the go-to platform for fast, affordable, and high-quality web development services globally, empowering businesses and students to bring their ideas to life.
+                    To grow into a trusted development partner for early-stage innovators — helping them ship faster, smarter, and better.
                   </p>
                 </div>
               </div>
-            </Card>
+            </UiCard>
           </div>
         </div>
       </section>
 
+      {/* FOUNDERS */}
       <section className="py-20 bg-muted/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="font-heading font-bold text-3xl sm:text-4xl mb-4" data-testid="text-founders-heading">
               Meet Our Founders
             </h2>
-            <p className="text-muted-foreground text-lg">
-              The team behind Eutian's success
-            </p>
+            <p className="text-muted-foreground text-lg">Four people. One vision. A new beginning.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {founders.map((founder, index) => (
@@ -115,15 +139,14 @@ export default function About() {
         </div>
       </section>
 
+      {/* TIMELINE */}
       <section className="py-20 bg-background">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="font-heading font-bold text-3xl sm:text-4xl mb-4" data-testid="text-timeline-heading">
-              Our Journey
+              Our Journey Begins
             </h2>
-            <p className="text-muted-foreground text-lg">
-              Key milestones in our growth
-            </p>
+            <p className="text-muted-foreground text-lg">Every big company starts small — this is our first step.</p>
           </div>
           <div className="space-y-8">
             {timeline.map((item, index) => (
@@ -148,29 +171,26 @@ export default function About() {
         </div>
       </section>
 
+      {/* GLOBAL SECTION – Early Stage */}
       <section className="py-20 bg-primary text-primary-foreground">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <Globe className="h-16 w-16 mx-auto mb-6 opacity-90" />
-            <h2 className="font-heading font-bold text-3xl sm:text-4xl mb-4" data-testid="text-global-heading">
-              Global Presence
-            </h2>
-            <p className="text-xl opacity-90 mb-6">
-              Serving clients across 20+ countries
-            </p>
-            <div className="grid grid-cols-3 gap-8 max-w-2xl mx-auto">
-              <div>
-                <p className="text-4xl font-heading font-bold mb-2" data-testid="text-stat-projects">500+</p>
-                <p className="text-sm opacity-90">Projects Completed</p>
-              </div>
-              <div>
-                <p className="text-4xl font-heading font-bold mb-2" data-testid="text-stat-clients">300+</p>
-                <p className="text-sm opacity-90">Happy Clients</p>
-              </div>
-              <div>
-                <p className="text-4xl font-heading font-bold mb-2" data-testid="text-stat-countries">20+</p>
-                <p className="text-sm opacity-90">Countries</p>
-              </div>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <Globe className="h-16 w-16 mx-auto mb-6 opacity-90" />
+          <h2 className="font-heading font-bold text-3xl sm:text-4xl mb-4">A Global Vision — Early Steps</h2>
+          <p className="text-xl opacity-90 mb-6 max-w-xl mx-auto">
+            We are just getting started. Our focus now is learning, building trust, and delivering quality.
+          </p>
+          <div className="grid grid-cols-3 gap-8 max-w-2xl mx-auto">
+            <div>
+              <p className="text-3xl font-heading font-bold">Starting</p>
+              <p className="text-sm opacity-90">First Clients</p>
+            </div>
+            <div>
+              <p className="text-3xl font-heading font-bold">2025</p>
+              <p className="text-sm opacity-90">Year Founded</p>
+            </div>
+            <div>
+              <p className="text-3xl font-heading font-bold">Growing</p>
+              <p className="text-sm opacity-90">Step by Step</p>
             </div>
           </div>
         </div>
