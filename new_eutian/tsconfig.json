@@ -20,7 +20,8 @@
     "baseUrl": "src",
     "paths": {
       "@/*": ["*"],
-      "@assets/*": ["assets/*"]
+      "@assets/*": ["assets/*"],
+      "@shared/*": ["shared/*"]
     },
     "incremental": true
   },
