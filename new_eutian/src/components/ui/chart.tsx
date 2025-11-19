@@ -233,7 +233,7 @@ const ChartTooltipContent = (props: any) => {
                             "--color-bg": indicatorColor,
                             "--color-border": indicatorColor,
                           } as React.CSSProperties
-                        }
+                        } 
                       />
                     )
                   )}
