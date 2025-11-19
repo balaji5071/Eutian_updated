@@ -105,7 +105,7 @@ ${colorConfig
 const ChartTooltip = RechartsPrimitive.Tooltip
 
 type ChartTooltipContentProps = TooltipProps<ValueType, NameType> &
-  React.ComponentProps<"div"> & {
+  React.HTMLAttributes<HTMLDivElement> & {
     hideLabel?: boolean
     hideIndicator?: boolean
     indicator?: "line" | "dot" | "dashed"
@@ -114,8 +114,7 @@ type ChartTooltipContentProps = TooltipProps<ValueType, NameType> &
     color?: string
   }
 
-const ChartTooltipContent = React.forwardRef<HTMLDivElement, ChartTooltipContentProps>(
-  (props, ref) => {
+const ChartTooltipContent = (props: ChartTooltipContentProps) => {
     const {
       active,
       payload,
@@ -177,7 +176,6 @@ const ChartTooltipContent = React.forwardRef<HTMLDivElement, ChartTooltipContent
 
     return (
       <div
-        ref={ref}
         className={cn(
           "grid min-w-[8rem] items-start gap-1.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl",
           className
@@ -253,7 +251,6 @@ const ChartTooltipContent = React.forwardRef<HTMLDivElement, ChartTooltipContent
       </div>
     )
   }
-)
 ChartTooltipContent.displayName = "ChartTooltip"
 
 const ChartLegend = RechartsPrimitive.Legend
