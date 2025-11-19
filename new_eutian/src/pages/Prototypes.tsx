@@ -16,40 +16,7 @@ export default function Prototypes() {
 
   const categories = ['All', 'SaaS', 'E-Commerce', 'Landing Page', 'AI/ML'];
 
-  const staticPrototypes = [
-    {
-      title: 'Analytics Dashboard',
-      image: saasImage.src,
-      category: 'SaaS',
-      description: 'A comprehensive analytics dashboard with real-time data visualization, user management, and reporting features. Built for scalability and performance.',
-      techStack: ['React', 'TypeScript', 'Chart.js', 'Node.js', 'PostgreSQL', 'Redis'],
-      features: ['Real-time analytics', 'Custom reports', 'User management', 'API integration'],
-    },
-    {
-      title: 'E-Commerce Platform',
-      image: ecommerceImage.src,
-      category: 'E-Commerce',
-      description: 'Full-featured e-commerce platform with product management, shopping cart, payment integration, and order tracking.',
-      techStack: ['Next.js', 'Stripe', 'PostgreSQL', 'Tailwind CSS', 'Vercel'],
-      features: ['Product catalog', 'Payment processing', 'Order management', 'Inventory tracking'],
-    },
-    {
-      title: 'AI Chatbot Platform',
-      image: chatbotImage.src,
-      category: 'AI/ML',
-      description: 'Intelligent chatbot platform with natural language processing, conversation history, and analytics dashboard.',
-      techStack: ['React', 'OpenAI', 'WebSocket', 'Express', 'MongoDB'],
-      features: ['NLP integration', 'Conversation memory', 'Multi-language support', 'Analytics'],
-    },
-    {
-      title: 'SaaS Landing Page',
-      image: landingImage.src,
-      category: 'Landing Page',
-      description: 'High-converting landing page for SaaS products with hero section, features showcase, pricing tables, and testimonials.',
-      techStack: ['React', 'Framer Motion', 'Tailwind CSS', 'Vercel'],
-      features: ['Responsive design', 'Animations', 'SEO optimized', 'Fast loading'],
-    },
-  ];
+ 
 
   const { data: dbPrototypes } = useQuery({
     queryKey: ['prototypes-public'],
