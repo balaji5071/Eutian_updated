@@ -114,7 +114,8 @@ type ChartTooltipContentProps = TooltipProps<ValueType, NameType> &
     color?: string
   }
 
-const ChartTooltipContent = (props: ChartTooltipContentProps) => {
+// Relax typing to guarantee compatibility with Recharts Tooltip content prop across versions
+const ChartTooltipContent = (props: any) => {
     const {
       active,
       payload,
