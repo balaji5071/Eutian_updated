@@ -13,6 +13,8 @@ import Pricing from "@/pages/Pricing";
 import Contact from "@/pages/Contact";
 import NotFound from "@/pages/NotFound";
 import Reviews from "@/pages/Reviews";
+import Terms from "@/pages/Terms";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
 
 function Router() {
   return (
@@ -24,6 +26,8 @@ function Router() {
       <Route path="/pricing" component={Pricing} />
       <Route path="/contact" component={Contact} />
       <Route path="/reviews" component={Reviews} />
+      <Route path="/terms" component={Terms} />
+      <Route path="/privacy-policy" component={PrivacyPolicy} />
       <Route component={NotFound} />
     </Switch>
   );

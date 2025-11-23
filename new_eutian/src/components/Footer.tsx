@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Mail, Phone, Linkedin, Twitter, Github, Clock } from 'lucide-react';
+import { Mail, Phone, Linkedin, Instagram, Clock } from 'lucide-react';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -32,22 +32,39 @@ export default function Footer() {
           <div>
             <h3 className="font-heading font-semibold text-lg mb-4">Legal</h3>
             <ul className="space-y-2">
-              <li><a href="#" className="text-muted-foreground hover:text-primary transition-colors" data-testid="link-footer-privacy">Privacy Policy</a></li>
-              <li><a href="#" className="text-muted-foreground hover:text-primary transition-colors" data-testid="link-footer-terms">Terms of Service</a></li>
+              <li>
+                <Link href="/privacy-policy" className="text-muted-foreground hover:text-primary transition-colors" data-testid="link-footer-privacy">
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms" className="text-muted-foreground hover:text-primary transition-colors" data-testid="link-footer-terms">
+                  Terms & Conditions
+                </Link>
+              </li>
             </ul>
           </div>
 
           <div>
             <h3 className="font-heading font-semibold text-lg mb-4">Connect</h3>
             <div className="flex gap-4 mb-4">
-              <a href="#" className="text-muted-foreground hover:text-primary transition-colors" data-testid="link-social-linkedin">
+              <a
+                href="https://www.linkedin.com/company/eutian"
+                target="_blank"
+                rel="noreferrer"
+                className="text-muted-foreground hover:text-primary transition-colors"
+                data-testid="link-social-linkedin"
+              >
                 <Linkedin className="h-5 w-5" />
               </a>
-              <a href="#" className="text-muted-foreground hover:text-primary transition-colors" data-testid="link-social-twitter">
-                <Twitter className="h-5 w-5" />
-              </a>
-              <a href="#" className="text-muted-foreground hover:text-primary transition-colors" data-testid="link-social-github">
-                <Github className="h-5 w-5" />
+              <a
+                href="https://www.instagram.com/eutian.in"
+                target="_blank"
+                rel="noreferrer"
+                className="text-muted-foreground hover:text-primary transition-colors"
+                data-testid="link-social-instagram"
+              >
+                <Instagram className="h-5 w-5" />
               </a>
             </div>
             <div className="space-y-2 text-sm text-muted-foreground">

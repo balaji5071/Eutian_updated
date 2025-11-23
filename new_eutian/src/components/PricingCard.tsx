@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Check } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ interface PricingCardProps {
   maintenance: string;
   highlighted?: boolean;
   onClick?: () => void;
+  ctaHref?: string;
 }
 
 export default function PricingCard({
@@ -23,7 +25,8 @@ export default function PricingCard({
   features,
   maintenance,
   highlighted = false,
-  onClick
+  onClick,
+  ctaHref
 }: PricingCardProps) {
   const { region, currencySymbol } = useRegion();
   const displayPrice = region === 'India' ? price : priceGlobal;
@@ -67,10 +70,15 @@ export default function PricingCard({
           <Button
             className="w-full"
             variant={highlighted ? 'default' : 'outline'}
-            onClick={onClick}
+            onClick={ctaHref ? undefined : onClick}
+            asChild={Boolean(ctaHref)}
             data-testid={`button-choose-${name.toLowerCase()}`}
           >
-            Choose {name}
+            {ctaHref ? (
+              <Link href={ctaHref}>Choose {name}</Link>
+            ) : (
+              <>Choose {name}</>
+            )}
           </Button>
         </div>
       </div>

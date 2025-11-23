@@ -14,6 +14,7 @@ interface LeadItem {
   phone?: string;
   whatsapp?: string;
   websiteType?: string;
+  plan?: string;
   region: 'India' | 'Global';
   message: string;
   status: 'new' | 'contacted' | 'closed';
@@ -126,6 +127,7 @@ export default function AdminPage() {
                   <th className="py-2 pr-4">Phone</th>
                   <th className="py-2 pr-4">WhatsApp</th>
                   <th className="py-2 pr-4">Website Type</th>
+                  <th className="py-2 pr-4">Plan</th>
                   <th className="py-2 pr-4">Region</th>
                   <th className="py-2 pr-4">Message</th>
                   <th className="py-2 pr-4">Status</th>
@@ -141,6 +143,7 @@ export default function AdminPage() {
                     <td className="py-2 pr-4">{l.phone || '-'}</td>
                     <td className="py-2 pr-4">{l.whatsapp || '-'}</td>
                     <td className="py-2 pr-4">{l.websiteType || '-'}</td>
+                    <td className="py-2 pr-4">{l.plan || '-'}</td>
                     <td className="py-2 pr-4">{l.region}</td>
                     <td className="py-2 pr-4 max-w-[300px]">{l.message}</td>
                     <td className="py-2 pr-4">

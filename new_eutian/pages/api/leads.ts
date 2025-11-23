@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 
+const PLAN_OPTIONS = ['Express', 'Standard', 'Premium', 'Custom'] as const;
 type Lead = {
   _id?: ObjectId;
   name: string;
@@ -9,6 +10,7 @@ type Lead = {
   phone?: string;
   whatsapp?: string;
   websiteType?: string;
+  plan?: (typeof PLAN_OPTIONS)[number];
   region: 'India' | 'Global';
   message: string;
   status: 'new' | 'contacted' | 'closed';
@@ -22,11 +24,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const leads = db.collection<Lead>('leads');
 
     if (req.method === 'POST') {
-      const { name, email, region, message, phone, whatsapp, websiteType } = req.body ?? {};
+      const { name, email, region, message, phone, whatsapp, websiteType, plan } = req.body ?? {};
       if (!name || !email || !region || !message) {
         return res.status(400).json({ ok: false, error: 'Missing required fields' });
       }
-      const doc: Lead = { name, email, region, message, phone, whatsapp, websiteType, status: 'new', createdAt: new Date() };
+      const mappedPlan: Lead['plan'] = typeof plan === 'string' && PLAN_OPTIONS.includes(plan as Lead['plan'])
+        ? (plan as Lead['plan'])
+        : undefined;
+      const doc: Lead = { name, email, region, message, phone, whatsapp, websiteType, plan: mappedPlan, status: 'new', createdAt: new Date() };
       const result = await leads.insertOne(doc);
       return res.status(201).json({ ok: true, id: result.insertedId.toString() });
     }

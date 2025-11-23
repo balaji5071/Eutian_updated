@@ -4,8 +4,19 @@ import PricingCard from '@/components/PricingCard';
 import RegionSelector from '@/components/RegionSelector';
 import Link from 'next/link';
 import { Check } from 'lucide-react';
+import { useRegion } from '@/lib/region-context';
 
 export default function Pricing() {
+  const { region, currencySymbol } = useRegion();
+
+  const buildPlanHref = (plan: 'Express' | 'Standard' | 'Premium', priceInr: number, priceGlobal: number, delivery: string, maintenance: string) => {
+    const displayPrice = region === 'India' ? priceInr : priceGlobal;
+    const formattedPrice = `${currencySymbol}${displayPrice.toLocaleString()}`;
+    const detail = `${formattedPrice} • Delivery ${delivery} • Maintenance ${maintenance}`;
+    const params = new URLSearchParams({ plan, planDetails: detail });
+    return `/contact?${params.toString()}`;
+  };
+
   const maintenanceCoverage = [
     { plan: 'Express', duration: '6 months', includes: ['Bug fixes', 'Minor UI updates', 'Deployment support'] },
     { plan: 'Standard', duration: '6 months', includes: ['Bug fixes', 'Minor UI updates', 'Deployment support', 'Content updates'] },
@@ -44,6 +55,7 @@ export default function Pricing() {
                 'Mobile-friendly',
               ]}
               maintenance="6 months"
+              ctaHref={buildPlanHref('Express', 5999, 79, '24-72 hours', '6 months')}
             />
             <PricingCard
               name="Standard"
@@ -60,6 +72,7 @@ export default function Pricing() {
               ]}
               maintenance="6 months"
               highlighted
+              ctaHref={buildPlanHref('Standard', 14999, 199, '3-5 days', '6 months')}
             />
             <PricingCard
               name="Premium"
@@ -75,6 +88,7 @@ export default function Pricing() {
                 '1 year maintenance',
               ]}
               maintenance="1 year"
+              ctaHref={buildPlanHref('Premium', 29999, 399, '5-7 days', '1 year')}
             />
           </div>
 

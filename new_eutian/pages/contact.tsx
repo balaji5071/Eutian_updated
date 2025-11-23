@@ -22,12 +22,15 @@ import {
 } from '@/components/ui/alert-dialog';
 import { SiWhatsapp } from 'react-icons/si';
 
+const planOptions = ['Express', 'Standard', 'Premium', 'Custom'] as const;
+
 const contactFormSchema = z.object({
 	name: z.string().min(2, 'Name must be at least 2 characters'),
 	email: z.string().email('Invalid email address'),
 	phone: z.string().min(7, 'Enter a valid phone number'),
 	whatsapp: z.string().min(7, 'Enter a valid WhatsApp number'),
 	websiteType: z.enum(['Landing Page', 'E-Commerce', 'SaaS Dashboard', 'Portfolio', 'Blog', 'Custom']),
+	plan: z.enum(planOptions),
 	region: z.enum(['India', 'Global']),
 	message: z.string().min(10, 'Message must be at least 10 characters'),
 });
@@ -48,10 +51,15 @@ export default function Contact() {
 			phone: '',
 			whatsapp: '',
 			websiteType: 'Landing Page',
+			plan: 'Custom',
 			region: region,
 			message: '',
 		},
 	});
+
+	const isValidPlan = (value: string): value is ContactFormValues['plan'] => {
+		return planOptions.includes(value as ContactFormValues['plan']);
+	};
 
 	const mapCategoryToWebsiteType = (cat: string): ContactFormValues['websiteType'] => {
 		switch (cat) {
@@ -66,9 +74,31 @@ export default function Contact() {
 		}
 	};
 
+		const mapPlanToWebsiteType = (plan: ContactFormValues['plan']): ContactFormValues['websiteType'] => {
+			switch (plan) {
+				case 'Express':
+					return 'Landing Page';
+				case 'Standard':
+					return 'E-Commerce';
+				case 'Premium':
+					return 'SaaS Dashboard';
+				default:
+					return 'Custom';
+			}
+		};
+
 	useEffect(() => {
 		if (typeof window === 'undefined') return;
 		const params = new URLSearchParams(window.location.search);
+			const planParam = params.get('plan');
+			const planDetails = params.get('planDetails');
+			if (planParam && isValidPlan(planParam)) {
+				form.setValue('plan', planParam);
+				form.setValue('websiteType', mapPlanToWebsiteType(planParam));
+				const message = `Interested in the ${planParam} plan${planDetails ? ` (${planDetails})` : ''}. Please share next steps.`;
+				form.setValue('message', message);
+				return;
+			}
 		const proto = params.get('prototype');
 		const category = params.get('category');
 		const desc = params.get('desc');
@@ -171,6 +201,31 @@ export default function Contact() {
 												<FormControl>
 													<Input placeholder="digits only for WhatsApp links" {...field} data-testid="input-whatsapp" />
 												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+
+									<FormField
+										control={form.control}
+										name="plan"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Preferred Plan</FormLabel>
+												<Select onValueChange={field.onChange} value={field.value}>
+													<FormControl>
+														<SelectTrigger data-testid="select-plan">
+															<SelectValue placeholder="Select a plan" />
+														</SelectTrigger>
+													</FormControl>
+													<SelectContent>
+														{planOptions.map((option) => (
+															<SelectItem key={option} value={option}>
+																{option}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
 												<FormMessage />
 											</FormItem>
 										)}

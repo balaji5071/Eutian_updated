@@ -4,8 +4,19 @@ import PricingCard from '@/components/PricingCard';
 import RegionSelector from '@/components/RegionSelector';
 import Link from 'next/link';
 import { Check } from 'lucide-react';
+import { useRegion } from '@/lib/region-context';
 
 export default function Pricing() {
+	const { region, currencySymbol } = useRegion();
+
+	const buildPlanHref = (plan: string, priceInr: number, priceGlobal: number, delivery: string, maintenance: string) => {
+		const displayPrice = region === 'India' ? priceInr : priceGlobal;
+		const formattedPrice = `${currencySymbol}${displayPrice.toLocaleString()}`;
+		const detail = `${formattedPrice} • Delivery ${delivery} • Maintenance ${maintenance}`;
+		const params = new URLSearchParams({ plan, planDetails: detail });
+		return `/contact?${params.toString()}`;
+	};
+
 	const maintenanceCoverage = [
 		{ plan: 'Express', duration: '6 months', includes: ['Bug fixes', 'Minor UI updates', 'Deployment support'] },
 		{ plan: 'Standard', duration: '6 months', includes: ['Bug fixes', 'Minor UI updates', 'Deployment support', 'Content updates'] },
@@ -37,6 +48,7 @@ export default function Pricing() {
 							delivery="24-72 hours"
 							features={['3 pages', 'Basic SEO optimization', 'Responsive design', 'Contact form', 'Fast delivery guarantee', 'Mobile-friendly']}
 							maintenance="6 months"
+							ctaHref={buildPlanHref('Express', 5999, 79, '24-72 hours', '6 months')}
 						/>
 						<PricingCard
 							name="Standard"
@@ -46,6 +58,7 @@ export default function Pricing() {
 							features={['Up to 8 pages', 'AI Chatbot integration', 'Full SEO optimization', 'CMS integration', 'Priority support', 'Analytics setup']}
 							maintenance="6 months"
 							highlighted
+							ctaHref={buildPlanHref('Standard', 14999, 199, '3-5 days', '6 months')}
 						/>
 						<PricingCard
 							name="Premium"
@@ -54,6 +67,7 @@ export default function Pricing() {
 							delivery="5-7 days"
 							features={['SaaS landing + dashboard', 'Custom features', 'Advanced optimization', 'API integrations', 'User authentication', '1 year maintenance']}
 							maintenance="1 year"
+							ctaHref={buildPlanHref('Premium', 29999, 399, '5-7 days', '1 year')}
 						/>
 					</div>
 
