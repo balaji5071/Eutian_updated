@@ -5,6 +5,8 @@ declare global {
   var _mongoClientPromise: Promise<MongoClient> | undefined;
 }
 
+export const DB_NAME = (process.env.MONGODB_DB || 'eutian').toLowerCase();
+
 const uri = process.env.MONGODB_URI;
 if (!uri) {
   throw new Error('MONGODB_URI is not set. Add it to .env.local');

@@ -5,18 +5,12 @@ import Link from 'next/link';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import PrototypeCard from '@/components/PrototypeCard';
-import saasImage from '@assets/generated_images/Prototype_preview_1_SaaS_a49e0518.png';
-import ecommerceImage from '@assets/generated_images/Prototype_preview_2_ecommerce_2240ae01.png';
-import chatbotImage from '@assets/generated_images/Prototype_preview_3_chatbot_5083329f.png';
-import landingImage from '@assets/generated_images/Prototype_preview_4_landing_c0e4f84a.png';
 
 export default function Prototypes() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedPrototype, setSelectedPrototype] = useState<any>(null);
 
   const categories = ['All', 'SaaS', 'E-Commerce', 'Landing Page', 'AI/ML'];
-
- 
 
   const { data: dbPrototypes } = useQuery({
     queryKey: ['prototypes-public'],
@@ -37,7 +31,7 @@ export default function Prototypes() {
     staleTime: 60_000,
   });
 
-  const prototypes = (dbPrototypes && dbPrototypes.length > 0) ? dbPrototypes : staticPrototypes;
+  const prototypes = dbPrototypes ?? [];
 
   const filteredPrototypes = useMemo(() => (
     selectedCategory === 'All' ? prototypes : prototypes.filter(p => p.category === selectedCategory)
@@ -70,13 +64,19 @@ export default function Prototypes() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredPrototypes.map((prototype, index) => (
-              <PrototypeCard
-                key={index}
-                {...prototype}
-                onClick={() => setSelectedPrototype(prototype)}
-              />
-            ))}
+            {filteredPrototypes.length === 0 ? (
+              <div className="col-span-full text-center text-muted-foreground" data-testid="text-prototypes-empty">
+                No prototypes available yet. Check back soon.
+              </div>
+            ) : (
+              filteredPrototypes.map((prototype, index) => (
+                <PrototypeCard
+                  key={index}
+                  {...prototype}
+                  onClick={() => setSelectedPrototype(prototype)}
+                />
+              ))
+            )}
           </div>
         </div>
       </section>

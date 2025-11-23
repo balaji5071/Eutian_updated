@@ -216,10 +216,7 @@ const ChartTooltipContent = (props: any) => {
                   {itemConfig?.icon ? (
                     <itemConfig.icon />
                   ) : (
-                    !hideIndicator && (                      const uri = process.env.MONGODB_URI;
-                    if (!uri) {
-                      throw new Error('MONGODB_URI is not set. Add it to .env.local');
-                    }
+                    !hideIndicator && (
                       <div
                         className={cn(
                           "shrink-0 rounded-[2px] border-[--color-border] bg-[--color-bg]",
@@ -236,7 +233,7 @@ const ChartTooltipContent = (props: any) => {
                             "--color-bg": indicatorColor,
                             "--color-border": indicatorColor,
                           } as React.CSSProperties
-                        } 
+                        }
                       />
                     )
                   )}

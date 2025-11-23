@@ -29,10 +29,10 @@ export function RegionProvider({ children }: { children: ReactNode }) {
   };
 
   const currencySymbol = region === 'India' ? '₹' : '$';
-  const phone = region === 'India' ? '+91 6302371238' : '+1 555 123 4567';
+  const phone = '6302371238';
   // Use digits only for wa.me links, and provide a formatted display string for UI
-  const whatsapp = region === 'India' ? '916302371238' : '15551234567';
-  const whatsappDisplay = region === 'India' ? '+91 63023 71238' : '+1 555 123 4567';
+  const whatsapp = '6302371238';
+  const whatsappDisplay = '6302371238';
 
   return (
     <RegionContext.Provider value={{ region, setRegion, currencySymbol, phone, whatsapp, whatsappDisplay }}>

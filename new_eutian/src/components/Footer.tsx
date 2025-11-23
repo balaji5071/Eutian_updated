@@ -57,7 +57,7 @@ export default function Footer() {
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="h-4 w-4" />
-                <span data-testid="text-footer-phone">+91 6302371238</span>
+                <span data-testid="text-footer-phone">6302371238</span>
               </div>
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />

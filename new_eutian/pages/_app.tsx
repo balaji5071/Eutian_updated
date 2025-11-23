@@ -32,6 +32,9 @@ export default function MyApp({ Component, pageProps }: AppProps) {
         <meta name="twitter:description" content="Eutian builds high‑quality websites, SaaS dashboards, and AI chatbots." />
         <meta name="twitter:image" content="/og-image.png" />
         <link rel="icon" href="/image.png" type="image/png" />
+        <link rel="shortcut icon" href="/image.png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="manifest" href="/manifest.webmanifest" />
       </Head>
       <TooltipProvider>
         <AuthProvider>
