@@ -7,7 +7,7 @@ import founder3 from '@assets/generated_images/srikar.png';
 import founder4 from '@assets/generated_images/Sai.png';
 
 export default function About() {
-	const founders = [
+	const founders = [ 
 		{
 			name: 'Jnanesh',
 			role: 'Co-Founder & Chief Financial & Media Officer (CFMO)',
