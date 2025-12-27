@@ -9,6 +9,14 @@ import founder4 from '@assets/generated_images/Sai.png';
 export default function About() {
 	const founders = [
 		{
+			name: 'Jnanesh',
+			role: 'Co-Founder & Chief Financial & Media Officer (CFMO)',
+			bio: 'Oversees financial health (budgeting, accounting) and leads media & brand strategy to shape Eutian’s public image and communications.',
+			image: founder2.src,
+			linkedin: 'https://linkedin.com',
+			ownership: '25%',
+		},
+		{
 			name: 'Balaji',
 			role: 'Founder & Chief Executive Officer (CEO)',
 			bio: 'Sets company vision and strategy, leads external partnerships, and ensures Eutian stays aligned with its mission to build intelligent digital solutions.',
@@ -24,22 +32,14 @@ export default function About() {
 			linkedin: 'https://linkedin.com',
 			ownership: '25%',
 		},
-		{
-			name: 'Jnanesh',
-			role: 'Co-Founder & Chief Financial & Media Officer (CFMO)',
-			bio: 'Oversees financial health (budgeting, accounting) and leads media & brand strategy to shape Eutian’s public image and communications.',
-			image: founder2.src,
-			linkedin: 'https://linkedin.com',
-			ownership: '25%',
-		},
-		{
-			name: 'Sai Kumar',
-			role: 'Co-Founder & Chief Marketing Officer (CMO)',
-			bio: 'Leads marketing, growth, and client acquisition—designing campaigns and partnerships to increase visibility and bring on new customers.',
-			image: founder4.src,
-			linkedin: 'https://linkedin.com',
-			ownership: '25%',
-		},
+		// {
+		// 	name: 'Sai Kumar',
+		// 	role: 'Co-Founder & Chief Marketing Officer (CMO)',
+		// 	bio: 'Leads marketing, growth, and client acquisition—designing campaigns and partnerships to increase visibility and bring on new customers.',
+		// 	image: founder4.src,
+		// 	linkedin: 'https://linkedin.com',
+		// 	ownership: '25%',
+		// },
 	];
 
 	const timeline = [
@@ -125,13 +125,33 @@ export default function About() {
 						<h2 className="font-heading font-bold text-3xl sm:text-4xl mb-4" data-testid="text-founders-heading">
 							Meet Our Founders
 						</h2>
-						<p className="text-muted-foreground text-lg">Four people. One vision. A new beginning.</p>
+						{/* <p className="text-muted-foreground text-lg">Four people. One vision. A new beginning.</p> */}
 					</div>
-					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+					{/* <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
 						{founders.map((founder, index) => (
 							<FounderCard key={index} {...founder} />
 						))}
+					</div> */}
+
+
+					<div className="flex justify-center">
+						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl">
+							{founders.map((founder, index) => (
+								<FounderCard key={index} {...founder} />
+							))}
+						</div>
 					</div>
+
+
+
+
+
+
+
+
+
+
+
 				</div>
 			</section>
 
@@ -192,3 +212,5 @@ export default function About() {
 		</div>
 	);
 }
+
+

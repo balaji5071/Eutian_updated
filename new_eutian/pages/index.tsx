@@ -17,7 +17,7 @@ export default function Home() {
     },
     {
       icon: Gauge,
-      title: 'SaaS Platforms',
+      title: 'SaaS Platforms',    
       description: 'Landing pages and dashboards for your SaaS product with seamless UX.',
     },
     {
