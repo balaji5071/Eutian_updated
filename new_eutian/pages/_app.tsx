@@ -1,4 +1,5 @@
 import '@/index.css';
+import '@/components/ProfileCard.css';
 import type { AppProps } from 'next/app';
 import Head from 'next/head';
 import { QueryClientProvider } from "@tanstack/react-query";

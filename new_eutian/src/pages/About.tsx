@@ -1,5 +1,5 @@
 import { Card as UiCard } from '@/components/ui/card';
-import FounderCard from '@/components/FounderCard';
+import ProfileCard from '@/components/ProfileCard';
 import { Target, Eye, Globe } from 'lucide-react';
 import founder1 from '@assets/generated_images/Founder_profile_photo_1_96bc376f.png';
 import founder2 from '@assets/generated_images/Founder_profile_photo_1_96bc376f.png';
@@ -133,7 +133,12 @@ export default function About() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {founders.map((founder, index) => (
-              <FounderCard key={index} {...founder} />
+              <ProfileCard
+                key={index}
+                name={founder.name}
+                title={founder.role}
+                avatarUrl={founder.image}
+              />
             ))}
           </div>
         </div>

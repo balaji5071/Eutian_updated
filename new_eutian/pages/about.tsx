@@ -1,5 +1,5 @@
 import { Card as UiCard } from '@/components/ui/card';
-import FounderCard from '@/components/FounderCard';
+import ProfileCard from '@/components/ProfileCard';
 import { Target, Eye, Globe } from 'lucide-react';
 import founder1 from '@assets/generated_images/Founder_profile_photo_1_96bc376f.png';
 import founder2 from '@assets/generated_images/Founder_profile_photo_3_89eaa0d1.png';
@@ -10,7 +10,7 @@ export default function About() {
 	const founders = [
 		{
 			name: 'Jnanesh',
-			role: 'Co-Founder & Chief Financial & Media Officer (CFMO)',
+			role: 'Chief Financial & Media Officer (CFMO)',
 			bio: 'Oversees financial health (budgeting, accounting) and leads media & brand strategy to shape Eutian’s public image and communications.',
 			image: founder2.src,
 			linkedin: 'https://linkedin.com',
@@ -26,7 +26,7 @@ export default function About() {
 		},
 		{
 			name: 'Srikar',
-			role: 'Co-Founder & Chief Operating Officer (COO)',
+			role: 'Chief Operating Officer (COO)',
 			bio: 'Manages day-to-day operations, project execution, and cross-team coordination to ensure timely delivery and quality standards.',
 			image: founder3.src,
 			linkedin: 'https://linkedin.com',
@@ -135,9 +135,15 @@ export default function About() {
 
 
 					<div className="flex justify-center">
-						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl">
+						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl">
 							{founders.map((founder, index) => (
-								<FounderCard key={index} {...founder} />
+								<ProfileCard
+									key={index}
+									name={founder.name}
+									title={founder.role}
+									avatarUrl={founder.image}
+									enableTilt={false}
+								/>
 							))}
 						</div>
 					</div>
