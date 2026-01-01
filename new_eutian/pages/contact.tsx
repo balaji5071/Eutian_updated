@@ -224,7 +224,7 @@ export default function Contact() {
 																{option}
 															</SelectItem>
 														))}
-													</SelectContent>
+													</SelectContent>  
 												</Select>
 												<FormMessage />
 											</FormItem>
