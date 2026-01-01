@@ -12,6 +12,8 @@ import Navbar from "@/components/Navbar";
 import AdminNavbar from "@/components/AdminNavbar";
 import { useRouter } from 'next/router';
 import Footer from "@/components/Footer";
+import GlowEffect from '@/components/GlowEffect';
+import NewYearOfferBanner from '@/components/NewYearOfferBanner';
 
 export default function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
@@ -40,6 +42,8 @@ export default function MyApp({ Component, pageProps }: AppProps) {
       <TooltipProvider>
         <AuthProvider>
           <RegionProvider>
+            <GlowEffect />
+            <NewYearOfferBanner />
             <div className="flex flex-col min-h-screen">
               {isAdmin ? <AdminNavbar /> : <Navbar />}
               <main className="flex-1">
