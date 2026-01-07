@@ -8,10 +8,10 @@ function expectedToken() {
 
 export function middleware(req: NextRequest) {
   const url = req.nextUrl.clone();
-  const isAdmin = url.pathname.startsWith('/admin');
+  const isEutianAdmin = url.pathname.startsWith('/eutianadmin');
   const isLogin = url.pathname.startsWith('/admin-login');
 
-  if (isAdmin) {
+  if (isEutianAdmin) {
     const token = req.cookies.get('admin_session')?.value;
     if (token !== expectedToken()) {
       url.pathname = '/admin-login';
@@ -21,7 +21,7 @@ export function middleware(req: NextRequest) {
   if (isLogin) {
     const token = req.cookies.get('admin_session')?.value;
     if (token === expectedToken()) {
-      url.pathname = '/admin';
+      url.pathname = '/eutianadmin';
       return NextResponse.redirect(url);
     }
   }
@@ -29,5 +29,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin', '/admin-login'],
+  matcher: ['/eutianadmin', '/admin-login'],
 };

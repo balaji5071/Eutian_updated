@@ -10,6 +10,7 @@ type Prototype = {
   description: string;
   techStack: string[];
   features: string[];
+  websiteUrl?: string; // New field
   createdAt: Date;
 };
 
@@ -26,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === 'POST') {
-      const { title, image, category, description, techStack, features } = req.body ?? {};
+      const { title, image, category, description, techStack, features, websiteUrl } = req.body ?? {};
       if (!title || !image || !category || !description) {
         return res.status(400).json({ ok: false, error: 'Missing required fields' });
       }
@@ -37,6 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         description,
         techStack: Array.isArray(techStack) ? techStack : [],
         features: Array.isArray(features) ? features : [],
+        websiteUrl,
         createdAt: new Date(),
       };
       const result = await protos.insertOne(doc);
@@ -47,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const { id, ...updates } = req.body ?? {};
       if (!id) return res.status(400).json({ ok: false, error: 'Missing id' });
       const clean: any = {};
-      ['title','image','category','description','techStack','features'].forEach((k) => {
+      ['title', 'image', 'category', 'description', 'techStack', 'features', 'websiteUrl'].forEach((k) => {
         if (updates[k] !== undefined) clean[k] = updates[k];
       });
       const result = await protos.updateOne({ _id: new ObjectId(id) }, { $set: clean });
@@ -61,7 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ ok: true, deletedCount: result.deletedCount });
     }
 
-    res.setHeader('Allow', ['GET','POST','PATCH','DELETE']);
+    res.setHeader('Allow', ['GET', 'POST', 'PATCH', 'DELETE']);
     return res.status(405).json({ ok: false, error: 'Method Not Allowed' });
   } catch (err) {
     console.error('Prototypes API error:', err);

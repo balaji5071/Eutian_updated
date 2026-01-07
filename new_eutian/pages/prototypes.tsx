@@ -25,6 +25,7 @@ export default function Prototypes() {
 				description: p.description,
 				techStack: p.techStack || [],
 				features: p.features || [],
+				websiteUrl: p.websiteUrl,
 			}));
 		},
 		staleTime: 60_000,
@@ -95,6 +96,13 @@ export default function Prototypes() {
 									<p className="text-muted-foreground" data-testid="text-modal-description">
 										{selectedPrototype.description}
 									</p>
+									{selectedPrototype.websiteUrl && (
+										<div className="mt-2">
+											<a href={selectedPrototype.websiteUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">
+												Visit Website &rarr;
+											</a>
+										</div>
+									)}
 								</div>
 								<div>
 									<h3 className="font-semibold text-lg mb-3">Tech Stack</h3>
