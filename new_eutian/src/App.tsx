@@ -9,7 +9,7 @@ import Home from "@/pages/Home";
 import Services from "@/pages/Services";
 import Prototypes from "@/pages/Prototypes";
 import About from "@/pages/About";
-import Pricing from "@/pages/Pricing";
+import Pricing from "@/pages/Pricing"; 
 import Contact from "@/pages/Contact";
 import NotFound from "@/pages/NotFound";
 import Reviews from "@/pages/Reviews";
