@@ -17,7 +17,8 @@ import NewYearOfferBanner from '@/components/NewYearOfferBanner';
 
 export default function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
-  const isAdmin = router.pathname === '/eutianadmin';
+  const adminPaths = ['/eutianadmin', '/admin-login'];
+  const isAdmin = adminPaths.includes(router.pathname);
   return (
     <QueryClientProvider client={queryClient}>
       <Head>
