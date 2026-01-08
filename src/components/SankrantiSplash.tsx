@@ -167,7 +167,7 @@ export default function SankrantiSplash() {
                 animate={{ scale: 1, rotate: 0 }}
                 exit={{ scale: 0, rotate: 180, opacity: 0 }}
                 transition={{ type: "spring", duration: 1 }}
-                className="flex flex-col items-center"
+                className="absolute inset-0 flex flex-col items-center justify-center"
               >
                 <motion.div
                   animate={{
@@ -228,19 +228,14 @@ export default function SankrantiSplash() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 1.2 }}
                 transition={{ duration: 0.8 }}
-                className="space-y-8"
+                className="absolute inset-0 flex flex-col items-center justify-center space-y-8"
               >
                 <motion.p
-                  className="text-4xl md:text-5xl font-bold text-orange-700 leading-relaxed drop-shadow-lg tracking-wide"
-                  style={{ fontFamily: 'Georgia, serif' }}
-                  animate={{
-                    textShadow: [
-                      '0 0 20px rgba(249,115,22,0.3)',
-                      '0 0 30px rgba(249,115,22,0.5)',
-                      '0 0 20px rgba(249,115,22,0.3)',
-                    ]
+                  className="text-4xl md:text-5xl font-bold text-orange-700 leading-relaxed tracking-wide"
+                  style={{ 
+                    fontFamily: 'Georgia, serif',
+                    textShadow: '0 0 25px rgba(249,115,22,0.4)'
                   }}
-                  transition={{ duration: 2, repeat: Infinity }}
                 >
                   {randomQuote}
                 </motion.p>
