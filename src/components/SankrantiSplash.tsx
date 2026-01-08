@@ -18,7 +18,7 @@ export default function SankrantiSplash() {
     return () => {
       clearTimeout(timer1);
       clearTimeout(timer2);
-      clearTimeout(timer3);
+      clearTimeout(timer3);     
     };
   }, []);
 
