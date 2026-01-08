@@ -18,12 +18,12 @@ export default function Pricing() {
 		const detail = `${formattedPrice} • Delivery ${delivery} • Maintenance ${maintenance}`;
 		const params = new URLSearchParams({ plan, planDetails: detail });
 		return `/contact?${params.toString()}`;
-	};
-    
+	};    
+      
 	const maintenanceCoverage = [
-		{ plan: 'Express', duration: '6 months', includes: ['Bug fixes', 'Minor UI updates', 'Deployment support'] },
+		{ plan: 'Express', duration: '3months', includes: ['Bug fixes', 'Minor UI updates', 'Deployment support'] },
 		{ plan: 'Standard', duration: '6 months', includes: ['Bug fixes', 'Minor UI updates', 'Deployment support', 'Content updates'] },
-		{ plan: 'Premium', duration: '1 year', includes: ['Bug fixes', 'Minor UI updates', 'Deployment support', 'Content updates', 'Security patches', 'Priority support'] },
+		{ plan: 'Premium', duration: '6year', includes: ['Bug fixes', 'Minor UI updates', 'Deployment support', 'Content updates', 'Security patches', 'Priority support'] },
 		{ plan: 'Student', duration: 'None', includes: ['Full handover', 'Documentation', 'Walkthrough video'] },
 	];
 
