@@ -1,0 +1,19 @@
+{
+  "name": "Eutian — Modern Web, SaaS, AI Chatbots",
+  "short_name": "Eutian",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#020617",
+  "theme_color": "#0ea5e9",
+  "description": "Eutian builds high-quality websites, SaaS dashboards, and AI chatbots with lightning fast delivery.",
+  "icons": [
+    {
+      "src": "/image.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
