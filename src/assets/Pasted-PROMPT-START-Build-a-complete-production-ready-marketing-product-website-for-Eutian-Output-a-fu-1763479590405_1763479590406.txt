@@ -1,0 +1,272 @@
+PROMPT START
+
+Build a complete, production-ready marketing & product website for Eutian. Output a full React + Vite project (file tree + code) that is ready to run, test, and deploy. Use Tailwind CSS for styling and Framer Motion for smooth transitions.
+
+BRAND & THEME
+
+Name: Eutian
+
+Tagline: Building the Intelligent Future.
+
+Theme Colors:
+
+Primary: Rolex Green #0A6E3A
+
+Secondary: Soft Grey #c5c6c7
+
+Background: White #ffffff
+
+Style: Modern, luxury-tech, minimal, bold typography, generous whitespace, accessible contrast.
+
+Logo: White with green accents (placeholders acceptable).
+
+SERVICES (to highlight across Home, Services page, SEO)
+
+Fast, scalable website development
+
+SaaS landing pages + dashboards
+
+AI chatbots & conversational UI integrations
+
+Technical + content SEO
+
+Student capstone project websites (mentorship + delivery)
+
+FOUNDERS / TEAM
+
+Four founders (equal). Create team cards on About page using the names/roles from the provided founder document (use placeholders for images). Include short bios.
+
+CORE USPs (prominent on homepage)
+
+Delivery: 24 hours → max 7 days
+
+Price: Up to 50% cheaper than market rates
+
+Production-ready, scalable builds
+
+Student capstone special offers
+
+TECH STACK & ARCHITECTURE
+
+Frontend: React + Vite
+
+Styling: Tailwind CSS (extend theme with rolex & graysoft tokens below)
+
+Routing: React Router
+
+State: Context API (or minimal Zustand if preferred)
+
+Forms: React Hook Form
+
+Animations: Framer Motion for page/transitions
+
+Auth (demo): token-based localStorage (JWT-like stubs)
+
+Demo API: serverless stubs or local JSON endpoints (clear route docs)
+
+Ready for Vercel / Netlify deployment
+
+TAILWIND THEME (use in tailwind.config.js → theme.extend.colors)
+
+colors: {
+  rolex: {
+    50:'#edf7ef',100:'#d6efe0',200:'#aee1bf',300:'#85d299',400:'#54b76a',
+    500:'#0A6E3A',600:'#095f33',700:'#074c28',800:'#05381d',900:'#032713'
+  },
+  graysoft: {
+    DEFAULT:'#c5c6c7',100:'#f4f4f5',200:'#e4e4e5',300:'#d4d4d5',400:'#c5c6c7',
+    500:'#9a9b9c',600:'#6f7071',700:'#4a4b4c',800:'#2f3031',900:'#1b1c1d'
+  },
+  brand: { bg:'#ffffff', text:'#0f172a' }
+}
+
+
+PAGES (8 total)
+
+Home — Hero (headline, subheadline), CTAs, features, services preview, pricing preview, testimonials, footer.
+
+Services — Detailed cards for Websites, SaaS, AI Chatbots, SEO, Student Capstone.
+
+Prototypes — Filterable gallery, modal detail view for each prototype.
+
+About — Mission, Vision, Founder cards (4), timeline animation, global presence.
+
+Contact — Lead form (React Hook Form), email & WhatsApp buttons, map placeholder. Form posts to /api/leads (demo).
+
+Region Selector — India / Global; persists selection in localStorage; updates currency & contact details.
+
+Admin (private) — Full admin console with RBAC user management (detailed below).
+
+404 — Futuristic animation + CTA back to home.
+
+PRICING & MAINTENANCE (show clearly on Pricing & Services)
+
+Express — ₹5,999 — Delivery: 24–72 hrs — 3 pages + Basic SEO — 6 months maintenance
+
+Standard — ₹14,999 — Delivery: 3–5 days — Up to 8 pages + Chatbot + Full SEO — 6 months maintenance
+
+Premium — ₹29,999 — Delivery: 5–7 days — SaaS landing + Dashboard + Optimization — 1 year maintenance
+
+Student Capstone — ₹3,499 — Delivery: 7 days — Code + Docs + Presentation Video — No maintenance
+
+MAINTENANCE COVERAGE
+
+Express & Standard: 6 months (bug fixes, minor UI updates, deployment help)
+
+Premium: 1 year (above + patching & priority support)
+
+Student: no maintenance; full handover with docs & walkthrough video
+
+HOMEPAGE COPY (use verbatim)
+
+Hero: “We build production-ready websites — fast, scalable, and affordable.”
+
+Subheadline: From landing pages to SaaS dashboards and AI chatbots. Delivered in 24 hours — max 7 days — at up to 50% less than market price.
+
+CTAs: Get a Quote (primary) | View Capstone Offer (secondary)
+
+ADMIN PANEL — ROLE-BASED USER MANAGEMENT (MUST be implemented)
+
+Roles: Super Admin, Admin, Employee, Viewer (optional).
+
+Super Admin: full control — seed one Super Admin at first run; can create, edit, deactivate, delete other admins/employees, view audit logs, impersonate (demo).
+
+Admin: manage employees, leads, prototypes, moderate content.
+
+Employee: limited (create prototypes, respond to leads, manage assigned tasks).
+
+Role-based route guards: protect /admin routes and UI elements.
+
+Users Management Page (/admin/users): list, search, filter by role/status; bulk actions (deactivate).
+
+Create User Modal/Form: { name, email, role, temporaryPassword (auto-gen), sendInvite }. If sendInvite true, generate invite token and display link/token (email sending optional demo).
+
+Edit User Modal: change role, reset password, deactivate/reactivate, view activity.
+
+Invite Flow: POST /api/admins/:id/invite returns token & link (demo).
+
+Audit Log: store {actorId, action, targetId, timestamp} in local JSON/localStorage. Display in /admin/audit.
+
+Impersonation (optional demo): Super Admin can impersonate another user (show audit).
+
+Confirmation dialogs for destructive actions; toasts for success/errors.
+
+API STUBS & ROUTES (demo serverless / local JSON)
+
+POST /api/auth/login → returns { token, user } with role
+
+POST /api/auth/logout → invalidates token (demo)
+
+GET /api/admins → list users (role-protected)
+
+POST /api/admins → create user (role-protected)
+
+PUT /api/admins/:id → update user (role-protected)
+
+DELETE /api/admins/:id → deactivate/delete (Super Admin only)
+
+POST /api/admins/:id/invite → generate invite token
+
+GET /api/audit → fetch audit logs (admin)
+
+GET /api/leads → fetch leads
+
+Use client-side permission middleware and server stub permission checks to demonstrate RBAC.
+
+AUTH & SECURITY (demo)
+
+Demo token-based auth stored in localStorage. Provide RequireAuth route guard and RequireRole wrapper.
+
+Seed initial Super Admin credentials in README and a seed script or initial JSON file.
+
+Deactivated users cannot log in. Show clear UI state.
+
+UX & UI DETAILS
+
+Reusable components: Navbar, Footer, Button, Card, Modal, Table, FormField, Badge, Toast.
+
+Role badges: Super Admin (dark green), Admin (green), Employee (soft grey).
+
+Use modals for create/edit, confirm dialogs for destructive actions.
+
+Accessibility: semantic HTML, keyboard navigable, labels for forms, focus outlines.
+
+Mobile-first responsive layouts.
+
+Smooth page transitions with Framer Motion.
+
+SEO & SOCIAL
+
+Meta titles & descriptions for each page.
+
+Open Graph image (1200×630) placeholder and Twitter card.
+
+JSON-LD for Organization + founder info.
+
+sitemap.xml and robots.txt generation instructions.
+
+PROTOTYPES PAGE
+
+Show sample cards with filters (category, tech).
+
+Modal shows detailed description, tech stack, preview link, download assets.
+
+CONTACT FORM & LEADS
+
+Contact form posts to /api/leads. Leads stored in demo JSON/localStorage and displayed in Admin → Leads. Include email field, message, region. Validate input with React Hook Form.
+
+REGION SELECTOR
+
+India / Global toggle; persist to localStorage; update currency symbol & phone numbers site-wide.
+
+DELIVERABLES (what to output)
+
+Full project folder structure (clear tree).
+
+All React pages and components (8 pages + admin).
+
+tailwind.config.js with color tokens above.
+
+Router setup with auth guards.
+
+Demo API stubs (serverless or local).
+
+Admin users UI: list, create, edit, deactivate, invite, audit logs.
+
+README: setup, how to seed Super Admin, how invite tokens work, how to deploy to Vercel/Netlify, how to change colors/pricing/content.
+
+Example assets and placeholder images.
+
+SEO meta samples and sample OG image (placeholder).
+
+Deployment instructions & one-command build/deploy script.
+
+MICROCOPY SAMPLES (use exact lines where indicated)
+
+Hero heading: “We build production-ready websites — fast, scalable, and affordable.”
+
+Hero subhead: From landing pages to SaaS dashboards and AI chatbots. Delivered in 24 hours — max 7 days — at up to 50% less than market price.
+
+Student Capstone section heading: “Student Capstone — Impress Your Professors.”
+
+Student capstone copy: We build complete capstone project websites in 7 days with clean code, documentation, and a walkthrough video. No maintenance included – full handover.
+
+DEVELOPMENT NOTES / BEHAVIOR
+
+Provide meaningful placeholder copy (no lorem ipsum).
+
+Ensure color usage: Primary CTAs bg-rolex-500 text-white, secondary/outline border-graysoft text-graysoft.
+
+Add confirmation dialogs for delete/deactivate; show toasts.
+
+Ensure admin role checks both client-side and in demo API responses.
+
+Provide a seed script or initialData.json to create the first Super Admin (documented in README).
+
+Provide unit/demo tests for critical components (auth guard, users list filter, create user form) if feasible.
+
+FINAL
+
+Output the full code base (or a downloadable archive) or print well-structured files in order so developer can copy-paste to create the project. Include instructions to run npm install, npm run dev, and npm run build.
+
+PROMPT END
