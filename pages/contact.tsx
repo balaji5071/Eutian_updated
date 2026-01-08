@@ -20,7 +20,7 @@ import {
 	AlertDialogFooter,
 	AlertDialogAction,
 } from '@/components/ui/alert-dialog';
-import { SiWhatsapp } from 'react-icons/si';
+import { SiWhatsapp } from 'react-icons/si';  
 
 const planOptions = ['Express', 'Standard', 'Premium', 'Custom'] as const;
 
