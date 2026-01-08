@@ -19,7 +19,7 @@ export default function Pricing() {
 		const params = new URLSearchParams({ plan, planDetails: detail });
 		return `/contact?${params.toString()}`;
 	};
-
+    
 	const maintenanceCoverage = [
 		{ plan: 'Express', duration: '6 months', includes: ['Bug fixes', 'Minor UI updates', 'Deployment support'] },
 		{ plan: 'Standard', duration: '6 months', includes: ['Bug fixes', 'Minor UI updates', 'Deployment support', 'Content updates'] },
