@@ -158,7 +158,7 @@ export default function SankrantiSplash() {
         </motion.div>
 
         {/* Content */}
-        <div className="relative z-10 text-center px-6 max-w-4xl">
+        <div className="relative z-10 text-center px-6 max-w-4xl w-full h-full flex items-center justify-center">
           <AnimatePresence mode="wait">
             {step === 0 && (
               <motion.div
@@ -167,7 +167,7 @@ export default function SankrantiSplash() {
                 animate={{ scale: 1, rotate: 0 }}
                 exit={{ scale: 0, rotate: 180, opacity: 0 }}
                 transition={{ type: "spring", duration: 1 }}
-                className="absolute inset-0 flex flex-col items-center justify-center"
+                className="flex flex-col items-center"
               >
                 <motion.div
                   animate={{
@@ -228,7 +228,7 @@ export default function SankrantiSplash() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 1.2 }}
                 transition={{ duration: 0.8 }}
-                className="absolute inset-0 flex flex-col items-center justify-center space-y-8"
+                className="space-y-8"
               >
                 <motion.p
                   className="text-4xl md:text-5xl font-bold text-orange-700 leading-relaxed tracking-wide"
