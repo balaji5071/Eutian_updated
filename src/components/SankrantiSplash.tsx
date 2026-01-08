@@ -5,6 +5,14 @@ export default function SankrantiSplash() {
   const [show, setShow] = useState(true);
   const [step, setStep] = useState(0);
   const [mounted, setMounted] = useState(false);
+  const [randomQuote] = useState(() => {
+    const quotes = [
+      "Let your dreams soar high like kites in the Sankranti sky",
+      "New beginnings, endless possibilities",
+      "Celebrate traditions, embrace the future"
+    ];
+    return quotes[Math.floor(Math.random() * quotes.length)];
+  });
 
   useEffect(() => {
     setMounted(true);
@@ -21,12 +29,6 @@ export default function SankrantiSplash() {
       clearTimeout(timer3);     
     };
   }, []);
-
-  const quotes = [
-    "Let your dreams soar high like kites in the Sankranti sky",
-    "New beginnings, endless possibilities",
-    "Celebrate traditions, embrace the future"
-  ];
 
   if (!mounted || !show) return null;
 
@@ -229,7 +231,7 @@ export default function SankrantiSplash() {
                   }}
                   transition={{ duration: 2, repeat: Infinity }}
                 >
-                  {quotes[Math.floor(Math.random() * quotes.length)]}
+                  {randomQuote}
                 </motion.p>
                 <motion.div
                   initial={{ width: 0 }}
