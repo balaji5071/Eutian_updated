@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Timer, PartyPopper } from 'lucide-react';
 
 const OfferBanner = () => {
-    // Sankranti Special: Offer ends Jan 20, 2026 at 11:59 PM IST
+    // Special Offer: Offer ends Jan 20, 2026 at 11:59 PM IST
     const targetDate = new Date('2026-01-20T23:59:59+05:30').getTime();
 
     const [timeLeft, setTimeLeft] = useState({
@@ -47,7 +47,7 @@ const OfferBanner = () => {
             <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-center gap-4 text-center relative z-10">
                 <div className="flex items-center gap-2 font-bold text-base md:text-lg">
                     <PartyPopper className="h-5 w-5 text-amber-400 animate-bounce" />
-                    <span className="text-gray-100">🪁 <span className="text-amber-400 font-extrabold">SANKRANTI SPECIAL:</span> LIMITED TIME <span className="text-emerald-400">30% OFF</span> ALL PACKAGES! 🪁</span>
+                    <span className="text-gray-100">🎉 <span className="text-amber-400 font-extrabold">SPECIAL OFFER:</span> LIMITED TIME <span className="text-emerald-400">30% OFF</span> ALL PACKAGES! 🎉</span>
                 </div>
 
                 <div className="flex items-center gap-4 bg-gradient-to-r from-indigo-900/40 to-purple-900/40 backdrop-blur-sm px-6 py-2 rounded-full border-2 border-indigo-500/50 shadow-lg shadow-indigo-500/20">
