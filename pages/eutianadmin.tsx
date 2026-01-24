@@ -370,7 +370,7 @@ export default function AdminPage() {
   const emailTemplates = {
     pricing: {
       subject: 'Eutian Pricing Details',
-      body: `Hi {{name}},\n\nThank you for your interest in Eutian!\n\nOur pricing plans:\n\n🎓 Student Capstone: ₹1,299 (perfect for academic projects)\n⚡ Express Plan: ₹4,199 (3-5 pages, 1 week delivery)\n💼 Standard Plan: ₹10,499 (5-10 pages, 2 weeks delivery)\n👑 Premium Plan: ₹20,999 (10+ pages, full features)\n\nAll plans include responsive design, SEO optimization, and 30 days support.\n\nSpecial Sankranti offer: 30% OFF until Jan 20, 2026!\n\nLet me know if you have questions.\n\nBest regards,\nEutian Team\n+91 9515760775`
+      body: `Hi {{name}},\n\nThank you for your interest in Eutian!\n\nOur pricing plans:\n\n🎓 Student Capstone: ₹1,299 (perfect for academic projects)\n⚡ Express Plan: ₹4,199 (3-5 pages, 1 week delivery)\n💼 Standard Plan: ₹10,499 (5-10 pages, 2 weeks delivery)\n👑 Premium Plan: ₹20,999 (10+ pages, full features)\n\nAll plans include responsive design, SEO optimization, and 30 days support.\n\nLet me know if you have questions.\n\nBest regards,\nEutian Team\n+91 9515760775`
     },
     availability: {
       subject: 'Project Timeline & Availability',
@@ -384,7 +384,7 @@ export default function AdminPage() {
 
   // Banner Settings
   const [bannerSettings, setBannerSettings] = useState({
-    title: 'Sankranti Special',
+    title: 'Special Offer',
     discount: '30% OFF',
     endDate: '2026-01-20T23:59:59',
     description: 'On all plans'
@@ -768,7 +768,7 @@ export default function AdminPage() {
                   <Input 
                     value={bannerSettings.title} 
                     onChange={e => setBannerSettings({...bannerSettings, title: e.target.value})}
-                    placeholder="e.g., Sankranti Special"
+                    placeholder="e.g., Special Offer"
                   />
                 </div>
                 <div>
