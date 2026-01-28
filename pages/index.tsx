@@ -6,7 +6,7 @@ import ServiceCard from '@/components/ServiceCard';
 import PricingCard from '@/components/PricingCard';
 import TestimonialCard from '@/components/TestimonialCard';
 import RegionSelector from '@/components/RegionSelector';
-import SankrantiSplash from '@/components/SankrantiSplash';
+
 import { Laptop, Gauge, MessageSquare, Search, GraduationCap, Check, Zap, DollarSign, Clock } from 'lucide-react';
 import heroImage from '@assets/generated_images/background.png';
 import { motion } from 'framer-motion';
@@ -74,7 +74,7 @@ export default function Home() {
 
   return (
     <>
-      <SankrantiSplash />
+    
       <div className="flex flex-col bg-mesh">
         <section
           className="relative min-h-screen flex items-center justify-center overflow-hidden"
