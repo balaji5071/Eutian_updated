@@ -8,6 +8,7 @@ interface ServiceCardProps {
   onClick?: () => void;
 }
 
+
 export default function ServiceCard({ icon: Icon, title, description, onClick }: ServiceCardProps) {
   return (
     <motion.div
