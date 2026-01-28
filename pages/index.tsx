@@ -74,7 +74,7 @@ export default function Home() {
 
   return (
     <>
-    
+
       <div className="flex flex-col bg-mesh">
         <section
           className="relative min-h-screen flex items-center justify-center overflow-hidden"
