@@ -14,6 +14,7 @@ import { useRouter } from 'next/router';
 import Footer from "@/components/Footer";
 import GlowEffect from '@/components/GlowEffect';
 
+
 export default function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
   const isAdmin = router.pathname === '/eutianadmin';
@@ -42,6 +43,7 @@ export default function MyApp({ Component, pageProps }: AppProps) {
         <AuthProvider>
           <RegionProvider>
             <GlowEffect />
+
             <div className="flex flex-col min-h-screen">
               {isAdmin ? <AdminNavbar /> : <Navbar />}
               <main className="flex-1">
