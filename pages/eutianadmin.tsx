@@ -370,7 +370,7 @@ export default function AdminPage() {
   const emailTemplates = {
     pricing: {
       subject: 'Eutian Pricing Details',
-      body: `Hi {{name}},\n\nThank you for your interest in Eutian!\n\nOur pricing plans:\n\n🎓 Student Capstone: ₹1,299 (perfect for academic projects)\n⚡ Express Plan: ₹4,199 (3-5 pages, 1 week delivery)\n💼 Standard Plan: ₹10,499 (5-10 pages, 2 weeks delivery)\n👑 Premium Plan: ₹20,999 (10+ pages, full features)\n\nAll plans include responsive design, SEO optimization, and 30 days support.\n\nLet me know if you have questions.\n\nBest regards,\nEutian Team\n+91 9515760775`
+      body: `Hi {{name}},\n\nThank you for your interest in Eutian!\n\nOur pricing plans:\n\n🎓 Student Capstone: ₹1,299 (perfect for academic projects)\n⚡ Express Plan: ₹4,199 (3-5 pages, 1 week delivery)\n💼 Standard Plan: ₹10,499 (5-10 pages, 2 weeks delivery)\n👑 Premium Plan: ₹20,999 (10+ pages, full features)\n\nAll plans include responsive design, SEO optimization, and 30 days support.\n\n💝 Valentine's Day Special: 30% OFF until Feb 14, 2026! Spread the love with amazing web design.\n\nLet me know if you have questions.\n\nBest regards,\nEutian Team\n+91 9515760775`
     },
     availability: {
       subject: 'Project Timeline & Availability',
@@ -384,10 +384,10 @@ export default function AdminPage() {
 
   // Banner Settings
   const [bannerSettings, setBannerSettings] = useState({
-    title: 'Special Offer',
+    title: "Valentine's Day Special",
     discount: '30% OFF',
-    endDate: '2026-01-20T23:59:59',
-    description: 'On all plans'
+    endDate: '2026-02-14T23:59:59',
+    description: 'Spread the love with amazing web design'
   });
 
   // Show loading state while checking authentication
