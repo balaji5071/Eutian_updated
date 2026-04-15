@@ -150,7 +150,7 @@ export default function Contact() {
 				} else if (res.status === 400) {
 					throw new Error(errorMessage + '. Please check your information and try again.');
 				} else if (res.status === 503) {
-					throw new Error('Service temporarily unavailable. Please contact us via phone: +91 83494 11119');
+					throw new Error('Service temporarily unavailable. Please contact us via phone: +91 9346163673');
 				} else {
 					throw new Error(errorMessage);
 				}
@@ -170,12 +170,12 @@ export default function Contact() {
 			// Network errors
 			if (e?.message?.includes('Failed to fetch') || e?.message?.includes('NetworkError')) {
 				errorTitle = 'Connection error';
-				errorDescription = 'Please check your internet connection and try again. Or contact us directly at +91 83494 11119';
+				errorDescription = 'Please check your internet connection and try again. Or contact us directly at +91 9346163673';
 			}
 			
 			// Timeout errors
 			if (e?.message?.includes('timeout')) {
-				errorDescription = 'Request timed out. Please try again or contact us via WhatsApp: +91 83494 11119';
+				errorDescription = 'Request timed out. Please try again or contact us via WhatsApp: +91 9346163673';
 			}
 
 			toast({
@@ -256,7 +256,7 @@ export default function Contact() {
 											<FormItem>
 												<FormLabel>Phone Number</FormLabel>
 												<FormControl>
-													<Input placeholder="e.g. 6302371238" {...field} data-testid="input-phone" />
+													<Input placeholder="e.g. 9346163673" {...field} data-testid="input-phone" />
 												</FormControl>
 												<FormMessage />
 											</FormItem>
@@ -409,14 +409,9 @@ export default function Contact() {
 										</div>
 										<div>
 											<h3 className="font-semibold mb-1">Phone</h3>
-											<div className="flex flex-col gap-1">
-												<a href="tel:9515760775" className="text-muted-foreground hover:text-primary transition-colors" data-testid="link-phone-2">
-													+91 9515760775
-												</a>
-												<a href="tel:6302371238" className="text-muted-foreground hover:text-primary transition-colors" data-testid="link-phone">
-													+91 6302371238
-												</a>
-											</div>
+											<a href="tel:9346163673" className="text-muted-foreground hover:text-primary transition-colors" data-testid="link-phone">
+												+91 9346163673
+											</a>
 										</div>
 									</div>
 
@@ -426,26 +421,15 @@ export default function Contact() {
 										</div>
 										<div>
 											<h3 className="font-semibold mb-1">WhatsApp</h3>
-											<div className="flex flex-col gap-1">
-												<a
-													href="https://wa.me/919515760775"
-													target="_blank"
-													rel="noopener noreferrer"
-													className="text-muted-foreground hover:text-primary transition-colors"
-													data-testid="link-whatsapp"
-												>
-													+91 9515760775
-												</a>
-												<a
-													href="https://wa.me/916302371238"
-													target="_blank"
-													rel="noopener noreferrer"
-													className="text-muted-foreground hover:text-primary transition-colors"
-													data-testid="link-whatsapp-2"
-												>
-													+91 6302371238
-												</a>
-											</div>
+											<a
+												href="https://wa.me/919346163673"
+												target="_blank"
+												rel="noopener noreferrer"
+												className="text-muted-foreground hover:text-primary transition-colors"
+												data-testid="link-whatsapp"
+											>
+												+91 9346163673
+											</a>
 										</div>
 									</div>
 

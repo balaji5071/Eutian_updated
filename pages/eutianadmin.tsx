@@ -370,7 +370,7 @@ export default function AdminPage() {
   const emailTemplates = {
     pricing: {
       subject: 'Eutian Pricing Details',
-      body: `Hi {{name}},\n\nThank you for your interest in Eutian!\n\nOur pricing plans:\n\n🎓 Student Capstone: ₹1,299 (perfect for academic projects)\n⚡ Express Plan: ₹4,199 (3-5 pages, 1 week delivery)\n💼 Standard Plan: ₹10,499 (5-10 pages, 2 weeks delivery)\n👑 Premium Plan: ₹20,999 (10+ pages, full features)\n\nAll plans include responsive design, SEO optimization, and 30 days support.\n\n💝 Valentine's Day Special: 30% OFF until Feb 14, 2026! Spread the love with amazing web design.\n\nLet me know if you have questions.\n\nBest regards,\nEutian Team\n+91 9515760775`
+      body: `Hi {{name}},\n\nThank you for your interest in Eutian!\n\nOur pricing plans:\n\n🎓 Student Capstone: ₹1,299 (perfect for academic projects)\n⚡ Express Plan: ₹4,199 (3-5 pages, 1 week delivery)\n💼 Standard Plan: ₹10,499 (5-10 pages, 2 weeks delivery)\n👑 Premium Plan: ₹20,999 (10+ pages, full features)\n\nAll plans include responsive design, SEO optimization, and 30 days support.\n\n💝 Valentine's Day Special: 30% OFF until Feb 14, 2026! Spread the love with amazing web design.\n\nLet me know if you have questions.\n\nBest regards,\nEutian Team\n+91 9346163673`
     },
     availability: {
       subject: 'Project Timeline & Availability',
@@ -378,7 +378,7 @@ export default function AdminPage() {
     },
     followup: {
       subject: 'Following up on your inquiry',
-      body: `Hi {{name}},\n\nI wanted to follow up on your recent inquiry about {{plan}}.\n\nDo you have any questions? I'd be happy to provide more details or schedule a call to discuss your project.\n\nLooking forward to hearing from you!\n\nBest regards,\nEutian Team\n+91 9515760775`
+      body: `Hi {{name}},\n\nI wanted to follow up on your recent inquiry about {{plan}}.\n\nDo you have any questions? I'd be happy to provide more details or schedule a call to discuss your project.\n\nLooking forward to hearing from you!\n\nBest regards,\nEutian Team\n+91 9346163673`
     }
   };
 
