@@ -22,8 +22,8 @@ export default function Pricing() {
       
 	const maintenanceCoverage = [
 		{ plan: 'Express', duration: '3months', includes: ['Bug fixes', 'Minor UI updates', 'Deployment support'] },
-		{ plan: 'Standard', duration: '6 months', includes: ['Bug fixes', 'Minor UI updates', 'Deployment support', 'Content updates'] },
-		{ plan: 'Premium', duration: '6year', includes: ['Bug fixes', 'Minor UI updates', 'Deployment support', 'Content updates', 'Security patches', 'Priority support'] },
+		{ plan: 'Standard', duration: '3 months', includes: ['Bug fixes', 'Minor UI updates', 'Deployment support', 'Content updates'] },
+		{ plan: 'Premium', duration: '3 months', includes: ['Bug fixes', 'Minor UI updates', 'Deployment support', 'Content updates', 'Security patches', 'Priority support'] },
 		{ plan: 'Student', duration: 'None', includes: ['Full handover', 'Documentation', 'Walkthrough video'] },
 	];
 
@@ -66,7 +66,7 @@ export default function Pricing() {
 								originalPriceGlobal={79}
 								delivery="24-72 hours"
 								features={['3 pages', 'Basic SEO optimization', 'Responsive design', 'Contact form', 'Fast delivery guarantee', 'Mobile-friendly']}
-								maintenance="6 months"
+								maintenance="3 months"
 								ctaHref={buildPlanHref('Express', applyDiscount(5999), applyDiscount(79), '24-72 hours', '6 months')}
 							/>
 						</ScrollReveal>
@@ -79,9 +79,9 @@ export default function Pricing() {
 								originalPriceGlobal={199}
 								delivery="3-5 days"
 								features={['Up to 8 pages', 'AI Chatbot integration', 'Full SEO optimization', 'CMS integration', 'Priority support', 'Analytics setup']}
-								maintenance="6 months"
+								maintenance="3 months"
 								highlighted
-								ctaHref={buildPlanHref('Standard', applyDiscount(14999), applyDiscount(199), '3-5 days', '6 months')}
+								ctaHref={buildPlanHref('Standard', applyDiscount(14999), applyDiscount(199), '3-5 days', '3 months')}
 							/>
 						</ScrollReveal>
 						<ScrollReveal delay={0.3}>
@@ -93,8 +93,8 @@ export default function Pricing() {
 								originalPriceGlobal={399}
 								delivery="5-7 days"
 								features={['SaaS landing + dashboard', 'Custom features', 'Advanced optimization', 'API integrations', 'User authentication', '1 year maintenance']}
-								maintenance="1 year"
-								ctaHref={buildPlanHref('Premium', applyDiscount(29999), applyDiscount(399), '5-7 days', '1 year')}
+								maintenance="3 months"
+								ctaHref={buildPlanHref('Premium', applyDiscount(29999), applyDiscount(399), '5-7 days', '3 months')}
 							/>
 						</ScrollReveal>
 					</div>
