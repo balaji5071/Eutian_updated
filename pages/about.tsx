@@ -3,7 +3,6 @@ import ProfileCard from '@/components/ProfileCard';
 import { Target, Eye, Globe } from 'lucide-react';
 import founder1 from '@assets/generated_images/Founder_profile_photo_1_96bc376f.png';
 import founder2 from '@assets/generated_images/Founder_profile_photo_3_89eaa0d1.png';
-import founder3 from '@assets/generated_images/srikar.png';
 import founder4 from '@assets/generated_images/Sai.png';
 
 export default function About() {
@@ -24,14 +23,7 @@ export default function About() {
 			linkedin: 'https://linkedin.com',
 			ownership: '25%',
 		},
-		{
-			name: 'Srikar',
-			role: 'Chief Operating Officer (COO)',
-			bio: 'Manages day-to-day operations, project execution, and cross-team coordination to ensure timely delivery and quality standards.',
-			image: founder3.src,
-			linkedin: 'https://linkedin.com',
-			ownership: '25%',
-		},
+
 		// {
 		// 	name: 'Sai Kumar',
 		// 	role: 'Co-Founder & Chief Marketing Officer (CMO)',

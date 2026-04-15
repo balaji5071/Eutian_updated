@@ -94,10 +94,7 @@ export default function Footer() {
               </div>
               <div className="flex items-start gap-3 text-muted-foreground hover:text-primary transition-colors group">
                 <Phone className="h-4 w-4 mt-0.5 group-hover:scale-110 transition-transform" />
-                <div className="flex flex-col gap-1">
-                  <span data-testid="text-footer-phone">+91 6302371238</span>
-                  <span>+91 9515760775</span>
-                </div>
+                <span data-testid="text-footer-phone">+91 9346163673</span>
               </div>
               <div className="flex items-start gap-3 text-muted-foreground">
                 <Clock className="h-4 w-4 mt-0.5" />
