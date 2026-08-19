@@ -1,44 +1,13 @@
 import { Card as UiCard } from '@/components/ui/card';
-import ProfileCard from '@/components/ProfileCard';
+// ProfileCard removed — founders section deleted
 import { Target, Eye, Globe } from 'lucide-react';
-import founder1 from '@assets/generated_images/Founder_profile_photo_1_96bc376f.png';
-import founder2 from '@assets/generated_images/Founder_profile_photo_3_89eaa0d1.png';
-import founder4 from '@assets/generated_images/Sai.png';
-
 export default function About() {
-	const founders = [ 
-		{
-			name: 'Jnanesh',
-			role: 'Chief Financial & Media Officer (CFMO)',
-			bio: 'Oversees financial health (budgeting, accounting) and leads media & brand strategy to shape Eutian’s public image and communications.',
-			image: founder2.src,
-			linkedin: 'https://linkedin.com',
-			ownership: '25%',
-		},
-		{
-			name: 'Balaji',
-			role: 'Founder & Chief Executive Officer (CEO)',
-			bio: 'Sets company vision and strategy, leads external partnerships, and ensures Eutian stays aligned with its mission to build intelligent digital solutions.',
-			image: founder1.src,
-			linkedin: 'https://linkedin.com',
-			ownership: '25%',
-		},
-
-		// {
-		// 	name: 'Sai Kumar',
-		// 	role: 'Co-Founder & Chief Marketing Officer (CMO)',
-		// 	bio: 'Leads marketing, growth, and client acquisition—designing campaigns and partnerships to increase visibility and bring on new customers.',
-		// 	image: founder4.src,
-		// 	linkedin: 'https://linkedin.com',
-		// 	ownership: '25%',
-		// },
-	];
 
 	const timeline = [
 		{
 			year: '2025',
 			event: 'Eutian Founded',
-			description: 'A group of four students came together with one vision — to build fast, affordable, production-ready websites.',
+			description: 'A passionate team came together with one vision — to build fast, affordable, production-ready websites.',
 		},
 		{
 			year: '2025',
@@ -47,8 +16,8 @@ export default function About() {
 		},
 		{
 			year: '2025',
-			event: 'Pilot Capstone Program',
-			description: 'Started helping students with real project websites and documentation.',
+			event: 'Core Service Launch',
+			description: 'Expanded our web development and digital solutions tailored for growing businesses.',
 		},
 		{
 			year: '2025',
@@ -86,7 +55,7 @@ export default function About() {
 										Our Mission
 									</h2>
 									<p className="text-muted-foreground leading-relaxed">
-										To help students, startups, and small businesses bring their ideas online quickly with affordable, production-ready solutions.
+										To help startups, entrepreneurs, and small businesses bring their ideas online quickly with affordable, production-ready solutions.
 									</p>
 								</div>
 							</div>
@@ -111,47 +80,7 @@ export default function About() {
 				</div>
 			</section>
 
-			<section className="py-20 bg-muted/30">
-				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-					<div className="text-center mb-12">
-						<h2 className="font-heading font-bold text-3xl sm:text-4xl mb-4" data-testid="text-founders-heading">
-							Meet Our Founders
-						</h2>
-						{/* <p className="text-muted-foreground text-lg">Four people. One vision. A new beginning.</p> */}
-					</div>
-					{/* <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-						{founders.map((founder, index) => (
-							<FounderCard key={index} {...founder} />
-						))}
-					</div> */}
-
-
-					<div className="flex justify-center">
-						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl">
-							{founders.map((founder, index) => (
-								<ProfileCard
-									key={index}
-									name={founder.name}
-									title={founder.role}
-									avatarUrl={founder.image}
-									enableTilt={false}
-								/>
-							))}
-						</div>
-					</div>
-
-
-
-
-
-
-
-
-
-
-
-				</div>
-			</section>
+            
 
 			<section className="py-20 bg-background">
 				<div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">

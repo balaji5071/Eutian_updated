@@ -30,8 +30,6 @@ AI chatbots & conversational UI integrations
 
 Technical + content SEO
 
-Student capstone project websites (mentorship + delivery)
-
 FOUNDERS / TEAM
 
 Four founders (equal). Create team cards on About page using the names/roles from the provided founder document (use placeholders for images). Include short bios.
@@ -43,8 +41,6 @@ Delivery: 24 hours → max 7 days
 Price: Up to 50% cheaper than market rates
 
 Production-ready, scalable builds
-
-Student capstone special offers
 
 TECH STACK & ARCHITECTURE
 
@@ -85,7 +81,7 @@ PAGES (8 total)
 
 Home — Hero (headline, subheadline), CTAs, features, services preview, pricing preview, testimonials, footer.
 
-Services — Detailed cards for Websites, SaaS, AI Chatbots, SEO, Student Capstone.
+Services — Detailed cards for Websites, SaaS, AI Chatbots, SEO.
 
 Prototypes — Filterable gallery, modal detail view for each prototype.
 
@@ -107,15 +103,11 @@ Standard — ₹14,999 — Delivery: 3–5 days — Up to 8 pages + Chatbot + Fu
 
 Premium — ₹29,999 — Delivery: 5–7 days — SaaS landing + Dashboard + Optimization — 1 year maintenance
 
-Student Capstone — ₹3,499 — Delivery: 7 days — Code + Docs + Presentation Video — No maintenance
-
 MAINTENANCE COVERAGE
 
 Express & Standard: 6 months (bug fixes, minor UI updates, deployment help)
 
 Premium: 1 year (above + patching & priority support)
-
-Student: no maintenance; full handover with docs & walkthrough video
 
 HOMEPAGE COPY (use verbatim)
 
@@ -123,7 +115,7 @@ Hero: “We build production-ready websites — fast, scalable, and affordable.�
 
 Subheadline: From landing pages to SaaS dashboards and AI chatbots. Delivered in 24 hours — max 7 days — at up to 50% less than market price.
 
-CTAs: Get a Quote (primary) | View Capstone Offer (secondary)
+CTAs: Get a Quote (primary) | View Pricing (secondary)
 
 ADMIN PANEL — ROLE-BASED USER MANAGEMENT (MUST be implemented)
 
@@ -247,9 +239,6 @@ Hero heading: “We build production-ready websites — fast, scalable, and affo
 
 Hero subhead: From landing pages to SaaS dashboards and AI chatbots. Delivered in 24 hours — max 7 days — at up to 50% less than market price.
 
-Student Capstone section heading: “Student Capstone — Impress Your Professors.”
-
-Student capstone copy: We build complete capstone project websites in 7 days with clean code, documentation, and a walkthrough video. No maintenance included – full handover.
 
 DEVELOPMENT NOTES / BEHAVIOR
 

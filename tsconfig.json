@@ -32,11 +32,7 @@
   "exclude": [
     "node_modules",
     "src/App.tsx",
-
-    
-    "src/index.css"
-// =======
+    "src/index.css",
     "src/main.tsx"
-// >>>>>>> MOD
   ]
 }

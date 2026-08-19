@@ -370,7 +370,7 @@ export default function AdminPage() {
   const emailTemplates = {
     pricing: {
       subject: 'Eutian Pricing Details',
-      body: `Hi {{name}},\n\nThank you for your interest in Eutian!\n\nOur pricing plans:\n\n🎓 Student Capstone: ₹1,299 (perfect for academic projects)\n⚡ Express Plan: ₹4,199 (3-5 pages, 1 week delivery)\n💼 Standard Plan: ₹10,499 (5-10 pages, 2 weeks delivery)\n👑 Premium Plan: ₹20,999 (10+ pages, full features)\n\nAll plans include responsive design, SEO optimization, and 30 days support.\n\n💝 Valentine's Day Special: 30% OFF until Feb 14, 2026! Spread the love with amazing web design.\n\nLet me know if you have questions.\n\nBest regards,\nEutian Team\n+91 9346163673`
+      body: `Hi {{name}},\n\nThank you for your interest in Eutian!\n\nOur pricing plans:\n\n⚡ Express Plan: ₹4,199 (24-72 hours delivery)\n💼 Standard Plan: ₹10,499 (3-5 days delivery)\n👑 Premium Plan: ₹20,999 (5-7 days delivery)\n\nAll plans include responsive design, SEO optimization, and dedicated support.\n\nLet me know if you have questions.\n\nBest regards,\nEutian Team\n+91 9346163673`
     },
     availability: {
       subject: 'Project Timeline & Availability',

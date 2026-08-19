@@ -21,10 +21,9 @@ export default function Pricing() {
 	};    
       
 	const maintenanceCoverage = [
-		{ plan: 'Express', duration: '3months', includes: ['Bug fixes', 'Minor UI updates', 'Deployment support'] },
+		{ plan: 'Express', duration: '3 months', includes: ['Bug fixes', 'Minor UI updates', 'Deployment support'] },
 		{ plan: 'Standard', duration: '6 months', includes: ['Bug fixes', 'Minor UI updates', 'Deployment support', 'Content updates'] },
-		{ plan: 'Premium', duration: '6year', includes: ['Bug fixes', 'Minor UI updates', 'Deployment support', 'Content updates', 'Security patches', 'Priority support'] },
-		{ plan: 'Student', duration: 'None', includes: ['Full handover', 'Documentation', 'Walkthrough video'] },
+		{ plan: 'Premium', duration: '1 year', includes: ['Bug fixes', 'Minor UI updates', 'Deployment support', 'Content updates', 'Security patches', 'Priority support'] },
 	];
 
 	const DISCOUNT = parseFloat(process.env.NEXT_PUBLIC_DISCOUNT_MULTIPLIER || '0.7'); // Configurable via .env
@@ -56,7 +55,7 @@ export default function Pricing() {
 						</div>
 					</ScrollReveal>
 
-					<div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
+					<div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-32">
 						<ScrollReveal delay={0.1}>
 							<PricingCard
 								name="Express"
@@ -100,64 +99,11 @@ export default function Pricing() {
 					</div>
 
 					<ScrollReveal>
-						<Card className="p-10 glass border-white/10 relative overflow-hidden group mb-32">
-							<div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-							<div className="flex flex-col md:flex-row items-center justify-between gap-10 relative z-10">
-								<div className="flex-1">
-									<h2 className="font-heading font-black text-4xl sm:text-5xl mb-4 text-white" data-testid="text-capstone-heading">
-										Student Capstone — <span className="text-primary italic">Success Guaranteed</span>
-									</h2>
-									<p className="text-white/60 text-lg font-light leading-relaxed mb-4">
-										We build complete capstone project websites in 7 days with clean code, documentation, and a walkthrough video. No maintenance included – full handover.
-									</p>
-									<p className="text-accent text-base font-semibold italic">
-										"Enjoy your holidays, celebrate with family — leave the project worries to us!" 🎓
-									</p>
-									<ul className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8">
-										{[
-											'Clean, well-documented code',
-											'Comprehensive project report',
-											'Professional walkthrough video',
-											'Presentation slides included'
-										].map((item) => (
-											<li key={item} className="flex items-center gap-3 text-white/70">
-												<Check className="h-5 w-5 text-primary shrink-0" />
-												<span className="text-sm font-medium">{item}</span>
-											</li>
-										))}
-									</ul>
-								</div>
-								<div className="text-center md:text-right shrink-0">
-									<div className="flex flex-col items-center md:items-end mb-8">
-										<p className="text-sm text-white/40 tracking-widest uppercase font-bold mb-2">Delivery: 7 days</p>
-										<div className="flex items-center gap-3 mb-2">
-											<p className="text-5xl font-heading font-black text-accent drop-shadow-[0_0_15px_rgba(245,158,11,0.3)]" data-testid="text-capstone-price">
-												₹1,299
-											</p>
-											<Badge className="bg-accent text-accent-foreground font-black px-3 py-1 text-xs">
-												STUDENT SPECIAL
-											</Badge>
-										</div>
-										<p className="text-xl text-white/40 line-through">
-											₹1,856
-										</p>
-									</div>
-									<Link href="/contact">
-										<Button className="rounded-full bg-white text-black hover:bg-white/90 font-black px-12 h-16 text-lg transition-transform hover:scale-105 shadow-2xl" size="lg" data-testid="button-capstone-cta">
-											Book Project
-										</Button>
-									</Link>
-								</div>
-							</div>
-						</Card>
-					</ScrollReveal>
-
-					<ScrollReveal>
 						<div className="mb-32">
 							<h2 className="font-heading font-black text-4xl sm:text-5xl mb-16 text-center text-white" data-testid="text-maintenance-heading">
 								Maintenance Coverage
 							</h2>
-							<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+							<div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
 								{maintenanceCoverage.map((item, index) => (
 									<ScrollReveal key={item.plan} delay={index * 0.1}>
 										<Card className="p-8 glass border-white/10 hover:border-primary/30 transition-all duration-500 h-full flex flex-col">

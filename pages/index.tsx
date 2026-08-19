@@ -7,7 +7,7 @@ import PricingCard from '@/components/PricingCard';
 import TestimonialCard from '@/components/TestimonialCard';
 import RegionSelector from '@/components/RegionSelector';
 
-import { Laptop, Gauge, MessageSquare, Search, GraduationCap, Check, Zap, DollarSign, Clock } from 'lucide-react';
+import { Laptop, Gauge, MessageSquare, Search, Check, Zap, DollarSign, Clock } from 'lucide-react';
 import heroImage from '@assets/generated_images/background.png';
 import { motion } from 'framer-motion';
 import ScrollReveal from '@/components/ScrollReveal';
@@ -35,11 +35,6 @@ export default function Home() {
       title: 'Technical SEO',
       description: 'Comprehensive SEO services to boost your online visibility.',
     },
-    {
-      icon: GraduationCap,
-      title: 'Student Capstone',
-      description: 'Complete capstone project websites with code, docs, and presentation.',
-    },
   ];
 
   const testimonials = [
@@ -54,9 +49,9 @@ export default function Home() {
       company: 'InnovateLabs',
     },
     {
-      quote: 'The student capstone service was perfect. Got my project done with full documentation and a walkthrough video!',
-      name: 'Priya Sharma',
-      company: 'IIT Delhi',
+      quote: 'Eutian built our e-commerce platform in under a week. Clean code, responsive design, and seamless performance.',
+      name: 'Rahul Sharma',
+      company: 'Apex Retail',
     },
   ];
 
@@ -131,7 +126,7 @@ export default function Home() {
                 size="lg"
                 variant="outline"
                 className="text-lg px-10 h-14 rounded-full glass border-white/20 text-white hover:bg-white/10 transition-all hover:scale-105"
-                data-testid="button-hero-capstone"
+                data-testid="button-hero-pricing"
               >
                 View Pricing
               </Button>
@@ -224,7 +219,7 @@ export default function Home() {
               </h2>
               <div className="w-24 h-1.5 bg-accent mx-auto rounded-full mb-6 shadow-[0_0_15px_hsla(var(--accent),0.5)]" />
               <p className="text-white/60 text-xl mb-12 font-light">
-                Premium quality, student-friendly rates
+                Premium quality, unbeatable rates
               </p>
               <div className="flex justify-center mb-16">
                 <RegionSelector />
@@ -268,43 +263,6 @@ export default function Home() {
               ctaHref={buildPlanHref('Premium', applyDiscount(29999), applyDiscount(399), '5-7 days', '1 year')}
             />
           </div>
-
-          <ScrollReveal>
-            <Card className="p-10 glass border-white/10 relative overflow-hidden group">
-              <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-              <div className="flex flex-col md:flex-row items-center justify-between gap-10 relative z-10">
-                <div className="flex-1">
-                  <h3 className="font-heading font-black text-3xl sm:text-4xl mb-4 text-white" data-testid="text-capstone-heading">
-                    Student Capstone — <span className="text-primary italic">Success Guaranteed</span>
-                  </h3>
-                  <p className="text-white/60 text-lg font-light leading-relaxed mb-4">
-                    Complete capstone project in 7 days with clean code, documentation, and walkthrough video. No maintenance — full handover.
-                  </p>
-                  <p className="text-accent text-base font-semibold italic">
-                    "Enjoy your holidays, celebrate with family — leave the project worries to us!" 🎓
-                  </p>
-                </div>
-                <div className="text-center md:text-right shrink-0">
-                  <div className="flex flex-col items-center md:items-end mb-6">
-                    <div className="flex items-center gap-3 mb-2">
-                      <p className="text-5xl font-heading font-black text-accent drop-shadow-[0_0_10px_rgba(245,158,11,0.3)]" data-testid="text-capstone-price">
-                        ₹1,299
-                      </p>
-                      <Badge className="bg-accent text-accent-foreground font-black px-3 py-1 text-xs">
-                        STUDENT SPECIAL
-                      </Badge>
-                    </div>
-                    <p className="text-xl text-white/40 line-through">
-                      ₹1,856
-                    </p>
-                  </div>
-                  <Link href="/contact">
-                    <Button className="rounded-full bg-white text-black hover:bg-white/90 font-bold px-10 h-14 transition-transform hover:scale-105" data-testid="button-capstone-cta">Book Now</Button>
-                  </Link>
-                </div>
-              </div>
-            </Card>
-          </ScrollReveal>
         </div>
       </section>
 
@@ -383,7 +341,7 @@ export default function Home() {
               </h2>
               <div className="w-24 h-1.5 bg-primary mx-auto rounded-full mb-6 shadow-[0_0_15px_hsla(var(--primary),0.5)]" />
               <p className="text-white/60 text-xl font-light">
-                Trusted by high-growth startups and students worldwide
+                Trusted by high-growth startups and businesses worldwide
               </p>
             </div>
           </ScrollReveal>

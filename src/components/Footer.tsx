@@ -22,7 +22,6 @@ export default function Footer() {
               <li><Link href="/services" className="text-muted-foreground hover:text-primary transition-all duration-300 hover:translate-x-1 inline-block" data-testid="link-footer-saas">SaaS Platforms</Link></li>
               <li><Link href="/services" className="text-muted-foreground hover:text-primary transition-all duration-300 hover:translate-x-1 inline-block" data-testid="link-footer-chatbots">AI Chatbots</Link></li>
               <li><Link href="/services" className="text-muted-foreground hover:text-primary transition-all duration-300 hover:translate-x-1 inline-block" data-testid="link-footer-seo">SEO Services</Link></li>
-              <li><Link href="/services" className="text-muted-foreground hover:text-primary transition-all duration-300 hover:translate-x-1 inline-block" data-testid="link-footer-capstone">Student Capstone</Link></li>
             </ul>
           </div>
 
