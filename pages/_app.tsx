@@ -42,7 +42,7 @@ export default function MyApp({ Component, pageProps }: AppProps) {
       <TooltipProvider>
         <AuthProvider>
           <RegionProvider>
-            <GlowEffect />
+            {!isAdmin && <GlowEffect />}
 
             <div className="flex flex-col min-h-screen">
               {!isAdmin && <Navbar />}
