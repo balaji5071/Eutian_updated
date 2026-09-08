@@ -28,6 +28,7 @@ export default function Navbar() {
     { href: '/reviews', label: 'Reviews' },
     { href: '/pricing', label: 'Pricing' },
     { href: '/about', label: 'About' },
+    { href: '/blog', label: 'Blog' },
   ];
 
   return (

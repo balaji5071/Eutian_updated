@@ -1,5 +1,5 @@
 import { Card as UiCard } from '@/components/ui/card';
-// ProfileCard removed — founders section deleted
+import FoundersSection from '@/components/FoundersSection';
 import { Target, Eye, Globe } from 'lucide-react';
 export default function About() {
 
@@ -80,7 +80,7 @@ export default function About() {
 				</div>
 			</section>
 
-            
+			<FoundersSection />
 
 			<section className="py-20 bg-background">
 				<div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">

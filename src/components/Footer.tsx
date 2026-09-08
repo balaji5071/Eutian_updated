@@ -32,6 +32,7 @@ export default function Footer() {
             </h3>
             <ul className="space-y-3">
               <li><Link href="/about" className="text-muted-foreground hover:text-primary transition-all duration-300 hover:translate-x-1 inline-block" data-testid="link-footer-about">About Us</Link></li>
+              <li><Link href="/blog" className="text-muted-foreground hover:text-primary transition-all duration-300 hover:translate-x-1 inline-block" data-testid="link-footer-blog">Blog & Insights</Link></li>
               <li><Link href="/prototypes" className="text-muted-foreground hover:text-primary transition-all duration-300 hover:translate-x-1 inline-block" data-testid="link-footer-prototypes">Prototypes</Link></li>
               <li><Link href="/pricing" className="text-muted-foreground hover:text-primary transition-all duration-300 hover:translate-x-1 inline-block" data-testid="link-footer-pricing">Pricing</Link></li>
               <li><Link href="/contact" className="text-muted-foreground hover:text-primary transition-all duration-300 hover:translate-x-1 inline-block" data-testid="link-footer-contact">Contact</Link></li>

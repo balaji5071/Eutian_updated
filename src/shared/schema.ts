@@ -61,4 +61,43 @@ export type Review = {
   status: 'visible' | 'hidden';
   createdAt: Date;
 };
-  
+
+// ============= Employee & RBAC Types =============
+export type EmployeeRole = 'admin' | 'sales' | 'marketing' | 'intern' | 'developer';
+
+export type Employee = {
+  _id?: ObjectId;
+  id?: string;
+  name: string;
+  email: string;
+  password: string;
+  role: EmployeeRole;
+  department?: string;
+  status: 'active' | 'inactive';
+  assignedTasks?: string[];
+  notes?: string;
+  createdAt: Date;
+};
+
+// ============= Blog Post Types =============
+export type BlogPost = {
+  _id?: ObjectId;
+  id?: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string;
+  coverImage?: string;
+  category: string;
+  tags: string[];
+  author: {
+    name: string;
+    role?: string;
+    avatar?: string;
+  };
+  status: 'published' | 'draft';
+  readingTime?: string;
+  publishedAt?: Date | string;
+  createdAt: Date;
+  updatedAt?: Date;
+};
