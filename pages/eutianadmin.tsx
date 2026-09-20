@@ -73,6 +73,66 @@ type BlogAdminItem = Omit<BlogPost, '_id' | 'createdAt'> & { id: string; created
 
 const USD_TO_INR = 85;
 
+function compressDataUrl(
+  dataUrl: string,
+  maxWidth = 1600,
+  maxHeight = 900,
+  quality = 0.82
+): Promise<string> {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined' || !dataUrl.startsWith('data:image/') || dataUrl.startsWith('data:image/svg+xml')) {
+      return resolve(dataUrl);
+    }
+    const img = new Image();
+    img.onload = () => {
+      let width = img.naturalWidth || img.width;
+      let height = img.naturalHeight || img.height;
+
+      if (width > maxWidth || height > maxHeight) {
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return resolve(dataUrl);
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, width, height);
+
+      let compressed = canvas.toDataURL('image/webp', quality);
+      if (!compressed.startsWith('data:image/webp')) {
+        compressed = canvas.toDataURL('image/jpeg', quality);
+      }
+      resolve(compressed);
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+function compressImageFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = async (e) => {
+      const raw = e.target?.result as string;
+      if (!raw) return reject(new Error('Failed to read image file'));
+      try {
+        const compressed = await compressDataUrl(raw);
+        resolve(compressed);
+      } catch {
+        resolve(raw);
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const qc = useQueryClient();
@@ -87,6 +147,7 @@ export default function AdminPage() {
   // General State
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isCompressingImage, setIsCompressingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverImageInputRef = useRef<HTMLInputElement>(null);
 
@@ -277,11 +338,20 @@ export default function AdminPage() {
       const url = '/api/blogs';
       const method = isEdit ? 'PATCH' : 'POST';
 
+      let coverImage = data.coverImage || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80';
+      if (coverImage.startsWith('data:image/') && coverImage.length > 300_000) {
+        try {
+          coverImage = await compressDataUrl(coverImage);
+        } catch (e) {
+          console.warn('Cover image auto-compression skipped:', e);
+        }
+      }
+
       const payload = {
         title: data.title,
         slug: data.slug || data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
         category: data.category || 'Engineering',
-        coverImage: data.coverImage || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
+        coverImage,
         readingTime: data.readingTime || '5 min read',
         authorName: data.authorName || 'Balaji',
         authorRole: data.authorRole || 'Founder & CEO',
@@ -297,8 +367,14 @@ export default function AdminPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      const json = await res.json();
-      if (!json.ok) throw new Error(json.error || 'Failed to save blog post');
+      const text = await res.text();
+      let json: any = {};
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error(text || `Server error (${res.status}): ${res.statusText}`);
+      }
+      if (!res.ok || !json.ok) throw new Error(json.error || 'Failed to save blog post');
       return json;
     },
     onSuccess: () => {
@@ -316,8 +392,14 @@ export default function AdminPage() {
   const deleteBlogMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/blogs?id=${id}`, { method: 'DELETE' });
-      const json = await res.json();
-      if (!json.ok) throw new Error(json.error || 'Failed to delete post');
+      const text = await res.text();
+      let json: any = {};
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error(text || `Failed to delete post (${res.status})`);
+      }
+      if (!res.ok || !json.ok) throw new Error(json.error || 'Failed to delete post');
       return json;
     },
     onSuccess: () => {
@@ -338,7 +420,13 @@ export default function AdminPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'seed' }),
       });
-      const json = await res.json();
+      const text = await res.text();
+      let json: any = {};
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error(text || `Failed to seed posts (${res.status})`);
+      }
       if (json.ok) {
         await qc.invalidateQueries({ queryKey: ['admin-blogs'] });
         await qc.invalidateQueries({ queryKey: ['public-blogs'] });
@@ -418,19 +506,32 @@ export default function AdminPage() {
   };
 
   // Handle Cover Image Upload
-  const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const result = event.target?.result as string;
-      if (result) {
-        setPostForm((prev) => ({ ...prev, coverImage: result }));
-        showToast('Cover image loaded!');
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      setIsCompressingImage(true);
+      showToast('Optimizing cover image...');
+      const compressedDataUrl = await compressImageFile(file);
+      setPostForm((prev) => ({ ...prev, coverImage: compressedDataUrl }));
+      showToast('Cover image optimized and loaded!');
+    } catch (err: any) {
+      console.error('Error optimizing image:', err);
+      // Fallback
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        if (result) {
+          setPostForm((prev) => ({ ...prev, coverImage: result }));
+          showToast('Cover image loaded!');
+        }
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsCompressingImage(false);
+      if (coverImageInputRef.current) coverImageInputRef.current.value = '';
+    }
   };
 
   // Open Create Mode
@@ -1164,10 +1265,15 @@ export default function AdminPage() {
 
                     {/* Upload / Dropzone Box */}
                     <div
-                      onClick={() => coverImageInputRef.current?.click()}
-                      className="border-2 border-dashed border-slate-200 hover:border-indigo-400 hover:bg-slate-50/50 rounded-2xl p-6 transition-all cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-5 text-center sm:text-left group"
+                      onClick={() => !isCompressingImage && coverImageInputRef.current?.click()}
+                      className="border-2 border-dashed border-slate-200 hover:border-indigo-400 hover:bg-slate-50/50 rounded-2xl p-6 transition-all cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-5 text-center sm:text-left group relative"
                     >
-                      {postForm.coverImage ? (
+                      {isCompressingImage ? (
+                        <div className="flex flex-col items-center justify-center py-4 space-y-2">
+                          <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                          <p className="text-xs font-semibold text-slate-700">Optimizing image...</p>
+                        </div>
+                      ) : postForm.coverImage ? (
                         <div className="relative w-full h-36 rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
                           <img
                             src={postForm.coverImage}
@@ -1192,6 +1298,20 @@ export default function AdminPage() {
                         </>
                       )}
                     </div>
+                    {postForm.coverImage && !isCompressingImage && (
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPostForm((prev) => ({ ...prev, coverImage: '' }));
+                          }}
+                          className="text-[11px] font-medium text-rose-500 hover:text-rose-700 underline"
+                        >
+                          Remove image
+                        </button>
+                      </div>
+                    )}
 
                     {/* Direct Image URL input */}
                     <div>
