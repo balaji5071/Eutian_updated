@@ -750,48 +750,298 @@ export default function AdminPage() {
     }
   };
 
+  // ================= PROTOTYPES STATE =================
+  const [prototypeModalOpen, setPrototypeModalOpen] = useState(false);
+  const [editingPrototypeId, setEditingPrototypeId] = useState<string | null>(null);
+  const [isCompressingProtoImage, setIsCompressingProtoImage] = useState(false);
+  const protoImageInputRef = useRef<HTMLInputElement>(null);
+
+  const initialProtoForm = {
+    title: '',
+    category: 'SaaS',
+    description: '',
+    imageUrl: '',
+    techStack: 'Next.js, React, Tailwind CSS',
+    features: 'Responsive Grid Layout\nInteractive Real-time Charts\nFast Performance',
+  };
+  const [prototypeForm, setPrototypeForm] = useState(initialProtoForm);
+
+  const savePrototypeMutation = useMutation({
+    mutationFn: async (form: typeof prototypeForm) => {
+      const isEdit = !!editingPrototypeId;
+      const url = '/api/prototypes';
+      const method = isEdit ? 'PATCH' : 'POST';
+
+      let imageUrl = form.imageUrl || 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80';
+      if (imageUrl.startsWith('data:image/') && imageUrl.length > 300_000) {
+        try {
+          imageUrl = await compressDataUrl(imageUrl);
+        } catch (e) {
+          console.warn('Proto image compression skipped:', e);
+        }
+      }
+
+      const payload = {
+        title: form.title.trim(),
+        category: form.category || 'SaaS',
+        description: form.description.trim(),
+        imageUrl,
+        techStack: form.techStack.split(',').map((s) => s.trim()).filter(Boolean),
+        features: form.features.split('\n').map((s) => s.trim()).filter(Boolean),
+      };
+
+      const body = isEdit ? { id: editingPrototypeId, ...payload } : payload;
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const text = await res.text();
+      let json: any = {};
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error(text || `Server error (${res.status})`);
+      }
+      if (!res.ok || !json.ok) throw new Error(json.error || 'Failed to save prototype');
+      return json;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['prototypes'] });
+      qc.invalidateQueries({ queryKey: ['prototypes-public'] });
+      setPrototypeModalOpen(false);
+      setEditingPrototypeId(null);
+      setPrototypeForm(initialProtoForm);
+      showToast(editingPrototypeId ? 'Prototype updated successfully!' : 'Prototype added successfully!');
+    },
+    onError: (err: any) => {
+      alert(`Error saving prototype: ${err.message}`);
+    },
+  });
+
+  const deletePrototypeMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/prototypes?id=${id}`, { method: 'DELETE' });
+      const text = await res.text();
+      let json: any = {};
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error(text || `Failed to delete prototype (${res.status})`);
+      }
+      if (!res.ok || !json.ok) throw new Error(json.error || 'Failed to delete prototype');
+      return json;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['prototypes'] });
+      qc.invalidateQueries({ queryKey: ['prototypes-public'] });
+      showToast('Prototype deleted successfully');
+    },
+    onError: (err: any) => {
+      alert(`Error deleting prototype: ${err.message}`);
+    },
+  });
+
+  const seedPrototypesMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/prototypes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'seed' }),
+      });
+      const text = await res.text();
+      let json: any = {};
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error(text || 'Failed to seed prototypes');
+      }
+      if (!res.ok || !json.ok) throw new Error(json.error || 'Failed to seed prototypes');
+      return json;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['prototypes'] });
+      qc.invalidateQueries({ queryKey: ['prototypes-public'] });
+      showToast('Sample prototypes seeded successfully!');
+    },
+    onError: (err: any) => {
+      alert(`Seed failed: ${err.message}`);
+    },
+  });
+
+  const handleProtoImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsCompressingProtoImage(true);
+      showToast('Optimizing image...');
+      const compressedDataUrl = await compressImageFile(file);
+      setPrototypeForm((prev) => ({ ...prev, imageUrl: compressedDataUrl }));
+      showToast('Cover image loaded!');
+    } catch (err) {
+      console.error(err);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        if (result) setPrototypeForm((prev) => ({ ...prev, imageUrl: result }));
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsCompressingProtoImage(false);
+      if (protoImageInputRef.current) protoImageInputRef.current.value = '';
+    }
+  };
+
+  const handleStartEditPrototype = (proto: Proto) => {
+    setEditingPrototypeId(proto.id);
+    const mediaUrl = proto.media?.[0]?.url || (proto as any).image || (proto as any).images?.[0] || '';
+    setPrototypeForm({
+      title: proto.title || '',
+      category: proto.category || 'SaaS',
+      description: proto.description || '',
+      imageUrl: mediaUrl,
+      techStack: Array.isArray(proto.techStack) ? proto.techStack.join(', ') : '',
+      features: Array.isArray(proto.features) ? proto.features.join('\n') : '',
+    });
+    setPrototypeModalOpen(true);
+  };
+
+  const handleStartCreatePrototype = () => {
+    setEditingPrototypeId(null);
+    setPrototypeForm(initialProtoForm);
+    setPrototypeModalOpen(true);
+  };
+
   // ================= EMPLOYEES STATE =================
-  const [showAddEmployeeForm, setShowAddEmployeeForm] = useState(false);
-  const [employeeForm, setEmployeeForm] = useState({
+  const [employeeModalOpen, setEmployeeModalOpen] = useState(false);
+  const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null);
+
+  const initialEmployeeForm = {
     name: '',
     email: '',
     password: '',
     role: 'sales' as EmployeeRole,
-    department: '',
+    department: 'Sales & Business Development',
+    status: 'active' as 'active' | 'inactive',
     notes: '',
-  });
+  };
+  const [employeeForm, setEmployeeForm] = useState(initialEmployeeForm);
 
-  const createEmployeeMutation = useMutation({
-    mutationFn: async (empData: Partial<Employee>) => {
-      const r = await fetch('/api/employees', {
-        method: 'POST',
+  const saveEmployeeMutation = useMutation({
+    mutationFn: async (form: typeof employeeForm) => {
+      const isEdit = !!editingEmployeeId;
+      const url = '/api/employees';
+      const method = isEdit ? 'PATCH' : 'POST';
+
+      const payload: any = {
+        name: form.name.trim(),
+        email: form.email.trim(),
+        role: form.role,
+        department: form.department || `${form.role.toUpperCase()} Department`,
+        status: form.status,
+        notes: form.notes,
+      };
+
+      if (!isEdit || form.password) {
+        payload.password = form.password;
+      }
+
+      const body = isEdit ? { id: editingEmployeeId, ...payload } : payload;
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(empData),
+        body: JSON.stringify(body),
       });
-      const j = await r.json();
-      if (!j.ok) throw new Error(j.error || 'Failed to create employee');
-      return j;
+      const text = await res.text();
+      let json: any = {};
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error(text || `Server error (${res.status})`);
+      }
+      if (!res.ok || !json.ok) throw new Error(json.error || 'Failed to save employee');
+      return json;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['employees'] });
-      setShowAddEmployeeForm(false);
-      setEmployeeForm({ name: '', email: '', password: '', role: 'sales', department: '', notes: '' });
-      showToast('Employee account created!');
+      setEmployeeModalOpen(false);
+      setEditingEmployeeId(null);
+      setEmployeeForm(initialEmployeeForm);
+      showToast(editingEmployeeId ? 'Employee updated successfully!' : 'New employee created successfully!');
+    },
+    onError: (err: any) => {
+      alert(`Error saving employee: ${err.message}`);
     },
   });
 
   const deleteEmployeeMutation = useMutation({
     mutationFn: async (id: string) => {
-      const r = await fetch(`/api/employees?id=${id}`, { method: 'DELETE' });
-      const j = await r.json();
-      if (!j.ok) throw new Error(j.error || 'Failed to delete employee');
-      return j;
+      const res = await fetch(`/api/employees?id=${id}`, { method: 'DELETE' });
+      const text = await res.text();
+      let json: any = {};
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error(text || `Failed to delete employee (${res.status})`);
+      }
+      if (!res.ok || !json.ok) throw new Error(json.error || 'Failed to delete employee');
+      return json;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['employees'] });
       showToast('Employee removed');
     },
+    onError: (err: any) => {
+      alert(`Error deleting employee: ${err.message}`);
+    },
   });
+
+  const seedEmployeesMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/employees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'seed' }),
+      });
+      const text = await res.text();
+      let json: any = {};
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error(text || 'Failed to seed employees');
+      }
+      if (!res.ok || !json.ok) throw new Error(json.error || 'Failed to seed employees');
+      return json;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['employees'] });
+      showToast('Sample employees loaded successfully!');
+    },
+    onError: (err: any) => {
+      alert(`Seed failed: ${err.message}`);
+    },
+  });
+
+  const handleStartEditEmployee = (emp: Employee) => {
+    setEditingEmployeeId(emp.id || (emp as any)._id?.toString() || null);
+    setEmployeeForm({
+      name: emp.name || '',
+      email: emp.email || '',
+      password: '',
+      role: emp.role || 'sales',
+      department: emp.department || '',
+      status: emp.status || 'active',
+      notes: emp.notes || '',
+    });
+    setEmployeeModalOpen(true);
+  };
+
+  const handleStartCreateEmployee = () => {
+    setEditingEmployeeId(null);
+    setEmployeeForm(initialEmployeeForm);
+    setEmployeeModalOpen(true);
+  };
 
   const metrics = useMemo(() => {
     const total = leadsData.length;
@@ -1121,17 +1371,36 @@ export default function AdminPage() {
         {activeTab === 'posts' && postsSubTab === 'create' && (
           <div className="space-y-6 pb-24 animate-in fade-in-50 duration-200">
             {/* Header with Back Arrow */}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setPostsSubTab('all')}
-                className="w-9 h-9 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-600 hover:text-slate-900 shadow-xs transition-colors"
-                title="Back to Posts"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-                {editingBlogId ? 'Edit Post' : 'Create New Post'}
-              </h1>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setPostsSubTab('all')}
+                  className="w-9 h-9 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-600 hover:text-slate-900 shadow-xs transition-colors"
+                  title="Back to Posts"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+                  {editingBlogId ? 'Edit Post' : 'Create New Post'}
+                </h1>
+              </div>
+
+              {postForm.slug && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const fullUrl = `${window.location.origin}/blog/${postForm.slug}`;
+                    navigator.clipboard.writeText(fullUrl);
+                    showToast('Blog link copied to clipboard!');
+                  }}
+                  className="text-xs flex items-center gap-1.5 border-slate-200 text-slate-700 bg-white hover:bg-slate-50 rounded-xl"
+                >
+                  <Copy className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Copy Public Link</span>
+                </Button>
+              )}
             </div>
 
             {/* Sub Tabs Navigation */}
@@ -1860,6 +2129,20 @@ export default function AdminPage() {
 
                             <td className="py-4 px-6 whitespace-nowrap text-right">
                               <div className="flex items-center justify-end gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const fullUrl = `${window.location.origin}/blog/${post.slug}`;
+                                    navigator.clipboard.writeText(fullUrl);
+                                    showToast('Blog link copied to clipboard!');
+                                  }}
+                                  className="text-slate-400 hover:text-indigo-600 transition-colors flex items-center gap-1 font-medium"
+                                  title="Copy Link"
+                                >
+                                  <Copy className="w-3.5 h-3.5" />
+                                  <span className="hidden sm:inline">Copy Link</span>
+                                </button>
+
                                 <a
                                   href={`/blog/${post.slug}`}
                                   target="_blank"
@@ -2510,54 +2793,613 @@ export default function AdminPage() {
         {/* ================= TAB: EMPLOYEES ================= */}
         {activeTab === 'employees' && (
           <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Employees</h1>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {employees.map((emp) => (
-                <div key={emp.id} className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-xs space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="w-9 h-9 rounded-full bg-indigo-50 text-indigo-700 font-bold flex items-center justify-center text-xs">
-                      {emp.name.charAt(0)}
-                    </div>
-                    <span className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded-md bg-slate-100 text-slate-700">
-                      {emp.role}
-                    </span>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-sm text-slate-900">{emp.name}</h4>
-                    <p className="text-xs text-slate-500">{emp.email}</p>
-                  </div>
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                    <span className="text-[11px] text-emerald-600 font-medium">● Active</span>
-                    <button
-                      onClick={() => deleteEmployeeMutation.mutate(emp.id!)}
-                      className="text-rose-600 hover:text-rose-800 text-xs font-medium"
-                    >
-                      Delete
-                    </button>
-                  </div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Employees</h1>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-600 border border-indigo-100">
+                    {employees.length} Total
+                  </span>
                 </div>
-              ))}
+                <p className="text-xs text-slate-500 mt-1">
+                  Manage team accounts, access roles, credentials, and departmental assignments.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => seedEmployeesMutation.mutate()}
+                  disabled={seedEmployeesMutation.isPending}
+                  className="text-xs bg-white border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl"
+                >
+                  {seedEmployeesMutation.isPending ? 'Seeding...' : 'Seed Defaults'}
+                </Button>
+
+                <Button
+                  size="sm"
+                  onClick={handleStartCreateEmployee}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-xs flex items-center gap-1.5"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  Add Employee
+                </Button>
+              </div>
             </div>
+
+            {employees.length === 0 ? (
+              <div className="bg-white border border-slate-200/90 rounded-2xl p-12 text-center space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto">
+                  <Users className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">No employees found</h3>
+                  <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                    Create a new employee account or seed default sample team members.
+                  </p>
+                </div>
+                <div className="flex justify-center gap-3">
+                  <Button
+                    onClick={handleStartCreateEmployee}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-xl"
+                  >
+                    <UserPlus className="w-3.5 h-3.5 mr-1" /> Add Employee
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => seedEmployeesMutation.mutate()}
+                    className="text-xs rounded-xl bg-white"
+                  >
+                    Seed Samples
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {employees.map((emp) => {
+                  const roleColors: Record<string, string> = {
+                    admin: 'bg-indigo-50 text-indigo-700 border-indigo-200/70',
+                    developer: 'bg-sky-50 text-sky-700 border-sky-200/70',
+                    sales: 'bg-emerald-50 text-emerald-700 border-emerald-200/70',
+                    marketing: 'bg-purple-50 text-purple-700 border-purple-200/70',
+                    intern: 'bg-amber-50 text-amber-700 border-amber-200/70',
+                  };
+
+                  return (
+                    <div
+                      key={emp.id}
+                      className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-xs space-y-4 flex flex-col justify-between hover:shadow-md transition-shadow"
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-700 font-bold flex items-center justify-center text-sm">
+                            {emp.name.charAt(0).toUpperCase()}
+                          </div>
+                          <span
+                            className={`px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md border ${
+                              roleColors[emp.role] || 'bg-slate-100 text-slate-700 border-slate-200'
+                            }`}
+                          >
+                            {emp.role}
+                          </span>
+                        </div>
+
+                        <div>
+                          <h4 className="font-bold text-sm text-slate-900">{emp.name}</h4>
+                          <p className="text-xs text-slate-500 font-mono mt-0.5">{emp.email}</p>
+                        </div>
+
+                        {emp.department && (
+                          <div className="inline-block text-[11px] text-slate-600 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-lg">
+                            {emp.department}
+                          </div>
+                        )}
+
+                        {emp.notes && (
+                          <p className="text-xs text-slate-400 italic line-clamp-2">{emp.notes}</p>
+                        )}
+                      </div>
+
+                      <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                        <span
+                          className={`text-[11px] font-medium flex items-center gap-1.5 ${
+                            emp.status === 'active' ? 'text-emerald-600' : 'text-slate-400'
+                          }`}
+                        >
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              emp.status === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'
+                            }`}
+                          />
+                          {emp.status === 'active' ? 'Active' : 'Inactive'}
+                        </span>
+
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => handleStartEditEmployee(emp)}
+                            className="text-indigo-600 hover:text-indigo-800 text-xs font-medium transition-colors flex items-center gap-1"
+                          >
+                            <Edit3 className="w-3 h-3" />
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm(`Remove employee account for "${emp.name}"?`)) {
+                                deleteEmployeeMutation.mutate(emp.id!);
+                              }
+                            }}
+                            className="text-rose-600 hover:text-rose-800 text-xs font-medium transition-colors flex items-center gap-1"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
         {/* ================= TAB: PROTOTYPES ================= */}
         {activeTab === 'prototypes' && (
           <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Prototypes</h1>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              {protos.map((proto) => (
-                <div key={proto.id} className="bg-white border border-slate-200/90 rounded-2xl shadow-xs p-5 space-y-2">
-                  <span className="text-[10px] font-semibold uppercase text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
-                    {proto.category}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Prototypes</h1>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-600 border border-indigo-100">
+                    {protos.length} Total
                   </span>
-                  <h4 className="font-bold text-slate-900 text-sm">{proto.title}</h4>
-                  <p className="text-xs text-slate-500 line-clamp-3">{proto.description}</p>
                 </div>
-              ))}
+                <p className="text-xs text-slate-500 mt-1">
+                  Manage your portfolio showcases, tech stacks, and demo prototypes.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => seedPrototypesMutation.mutate()}
+                  disabled={seedPrototypesMutation.isPending}
+                  className="text-xs bg-white border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl"
+                >
+                  {seedPrototypesMutation.isPending ? 'Seeding...' : 'Seed Defaults'}
+                </Button>
+
+                <Button
+                  size="sm"
+                  onClick={handleStartCreatePrototype}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-xs flex items-center gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  New Prototype
+                </Button>
+              </div>
             </div>
+
+            {protos.length === 0 ? (
+              <div className="bg-white border border-slate-200/90 rounded-2xl p-12 text-center space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto">
+                  <FolderKanban className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">No prototypes found</h3>
+                  <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                    Add your first prototype demo or seed the default samples to get started.
+                  </p>
+                </div>
+                <div className="flex justify-center gap-3">
+                  <Button
+                    onClick={handleStartCreatePrototype}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-xl"
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Add Prototype
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => seedPrototypesMutation.mutate()}
+                    className="text-xs rounded-xl bg-white"
+                  >
+                    Seed Samples
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {protos.map((proto) => {
+                  const mediaUrl = proto.media?.[0]?.url || (proto as any).image || (proto as any).images?.[0] || 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80';
+                  return (
+                    <div
+                      key={proto.id}
+                      className="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden flex flex-col group hover:shadow-md transition-shadow"
+                    >
+                      {/* Image header */}
+                      <div className="relative h-44 w-full bg-slate-100 overflow-hidden border-b border-slate-100">
+                        <img
+                          src={mediaUrl}
+                          alt={proto.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                        <span className="absolute top-3 left-3 text-[10px] font-bold uppercase tracking-wider text-indigo-700 bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-md shadow-xs">
+                          {proto.category}
+                        </span>
+                      </div>
+
+                      {/* Content */}
+                      <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                        <div className="space-y-2">
+                          <h4 className="font-bold text-slate-900 text-sm line-clamp-1">{proto.title}</h4>
+                          <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{proto.description}</p>
+
+                          {/* Tech stack */}
+                          {proto.techStack && proto.techStack.length > 0 && (
+                            <div className="flex flex-wrap gap-1 pt-1">
+                              {proto.techStack.slice(0, 4).map((tech, idx) => (
+                                <span
+                                  key={idx}
+                                  className="text-[10px] font-medium bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md"
+                                >
+                                  {tech}
+                                </span>
+                              ))}
+                              {proto.techStack.length > 4 && (
+                                <span className="text-[10px] font-medium bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded-md">
+                                  +{proto.techStack.length - 4}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                          <Link
+                            href="/prototypes"
+                            target="_blank"
+                            className="text-xs text-slate-500 hover:text-indigo-600 transition-colors flex items-center gap-1 font-medium"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            View
+                          </Link>
+
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => handleStartEditPrototype(proto)}
+                              className="text-xs text-indigo-600 hover:text-indigo-800 font-medium transition-colors flex items-center gap-1"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (confirm(`Delete prototype "${proto.title}"?`)) {
+                                  deletePrototypeMutation.mutate(proto.id);
+                                }
+                              }}
+                              className="text-xs text-rose-600 hover:text-rose-800 font-medium transition-colors flex items-center gap-1"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
+
+        {/* Prototype Modal Dialog */}
+        <Dialog open={prototypeModalOpen} onOpenChange={setPrototypeModalOpen}>
+          <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl p-6 text-slate-900 shadow-xl border border-slate-200">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold text-slate-900">
+                {editingPrototypeId ? 'Edit Prototype' : 'Add New Prototype'}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-500">
+                {editingPrototypeId
+                  ? 'Update prototype details, tech stack, and showcase images.'
+                  : 'Create a new prototype project to showcase in your portfolio.'}
+              </DialogDescription>
+            </DialogHeader>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!prototypeForm.title.trim()) return alert('Please enter a title');
+                if (!prototypeForm.description.trim()) return alert('Please enter a description');
+                savePrototypeMutation.mutate(prototypeForm);
+              }}
+              className="space-y-4 pt-2"
+            >
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Title *</label>
+                <Input
+                  placeholder="e.g. ApexSaaS — AI Analytics Dashboard"
+                  value={prototypeForm.title}
+                  onChange={(e) => setPrototypeForm({ ...prototypeForm, title: e.target.value })}
+                  required
+                  className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Category *</label>
+                  <Select
+                    value={prototypeForm.category}
+                    onValueChange={(val) => setPrototypeForm({ ...prototypeForm, category: val })}
+                  >
+                    <SelectTrigger className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200">
+                      <SelectItem value="SaaS">SaaS</SelectItem>
+                      <SelectItem value="E-Commerce">E-Commerce</SelectItem>
+                      <SelectItem value="Landing Page">Landing Page</SelectItem>
+                      <SelectItem value="AI/ML">AI/ML</SelectItem>
+                      <SelectItem value="Healthcare">Healthcare</SelectItem>
+                      <SelectItem value="Fintech">Fintech</SelectItem>
+                      <SelectItem value="Mobile App">Mobile App</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Tech Stack (comma-separated)</label>
+                  <Input
+                    placeholder="Next.js, React, Tailwind CSS"
+                    value={prototypeForm.techStack}
+                    onChange={(e) => setPrototypeForm({ ...prototypeForm, techStack: e.target.value })}
+                    className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Description *</label>
+                <Textarea
+                  rows={3}
+                  placeholder="Detailed description of the prototype, target audience, and architecture..."
+                  value={prototypeForm.description}
+                  onChange={(e) => setPrototypeForm({ ...prototypeForm, description: e.target.value })}
+                  required
+                  className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Cover Image</label>
+                <input
+                  type="file"
+                  ref={protoImageInputRef}
+                  onChange={handleProtoImageUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <div
+                  onClick={() => !isCompressingProtoImage && protoImageInputRef.current?.click()}
+                  className="border border-dashed border-slate-200 hover:border-indigo-400 rounded-xl p-3 cursor-pointer bg-slate-50/50 flex items-center justify-between gap-3 text-xs text-slate-600 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <ImageIcon className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                    <span>{isCompressingProtoImage ? 'Optimizing image...' : 'Click to upload image file (auto-optimized)'}</span>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs bg-white">
+                    Browse
+                  </Button>
+                </div>
+
+                <div className="mt-2">
+                  <Input
+                    placeholder="Or paste image URL (https://...)"
+                    value={prototypeForm.imageUrl}
+                    onChange={(e) => setPrototypeForm({ ...prototypeForm, imageUrl: e.target.value })}
+                    className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl"
+                  />
+                </div>
+
+                {prototypeForm.imageUrl && (
+                  <div className="mt-2 relative w-full h-28 rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
+                    <img src={prototypeForm.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setPrototypeForm({ ...prototypeForm, imageUrl: '' })}
+                      className="absolute top-2 right-2 bg-black/70 hover:bg-black text-white text-[10px] px-2 py-0.5 rounded-md"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Key Features (one per line)</label>
+                <Textarea
+                  rows={3}
+                  placeholder="Dark/Light Mode&#10;Interactive Real-time Charts&#10;Stripe Billing Integration"
+                  value={prototypeForm.features}
+                  onChange={(e) => setPrototypeForm({ ...prototypeForm, features: e.target.value })}
+                  className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl font-mono text-[11px]"
+                />
+              </div>
+
+              <DialogFooter className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setPrototypeModalOpen(false)}
+                  className="text-xs rounded-xl"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={savePrototypeMutation.isPending}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-xl font-semibold shadow-xs"
+                >
+                  {savePrototypeMutation.isPending
+                    ? 'Saving...'
+                    : editingPrototypeId
+                    ? 'Update Prototype'
+                    : 'Add Prototype'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Employee Modal Dialog */}
+        <Dialog open={employeeModalOpen} onOpenChange={setEmployeeModalOpen}>
+          <DialogContent className="max-w-lg bg-white rounded-2xl p-6 text-slate-900 shadow-xl border border-slate-200">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold text-slate-900">
+                {editingEmployeeId ? 'Edit Employee' : 'Add New Employee'}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-500">
+                {editingEmployeeId
+                  ? 'Update employee role, department, credentials, or status.'
+                  : 'Create a new team member account with role permissions.'}
+              </DialogDescription>
+            </DialogHeader>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!employeeForm.name.trim()) return alert('Please enter name');
+                if (!employeeForm.email.trim()) return alert('Please enter email');
+                if (!editingEmployeeId && !employeeForm.password.trim()) return alert('Please enter password');
+                saveEmployeeMutation.mutate(employeeForm);
+              }}
+              className="space-y-4 pt-2"
+            >
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Full Name *</label>
+                <Input
+                  placeholder="e.g. Elena Rostova"
+                  value={employeeForm.name}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, name: e.target.value })}
+                  required
+                  className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Work Email *</label>
+                <Input
+                  type="email"
+                  placeholder="elena@eutian.com"
+                  value={employeeForm.email}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, email: e.target.value })}
+                  required
+                  className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  Password {editingEmployeeId ? '(leave blank to keep current)' : '*'}
+                </label>
+                <Input
+                  type="password"
+                  placeholder={editingEmployeeId ? '••••••••' : 'Minimum 6 characters'}
+                  value={employeeForm.password}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, password: e.target.value })}
+                  required={!editingEmployeeId}
+                  className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Role *</label>
+                  <Select
+                    value={employeeForm.role}
+                    onValueChange={(val: any) => setEmployeeForm({ ...employeeForm, role: val })}
+                  >
+                    <SelectTrigger className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl">
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200">
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="developer">Developer</SelectItem>
+                      <SelectItem value="sales">Sales</SelectItem>
+                      <SelectItem value="marketing">Marketing</SelectItem>
+                      <SelectItem value="intern">Intern</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Status</label>
+                  <Select
+                    value={employeeForm.status}
+                    onValueChange={(val: any) => setEmployeeForm({ ...employeeForm, status: val })}
+                  >
+                    <SelectTrigger className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200">
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Department</label>
+                <Input
+                  placeholder="e.g. Engineering & Architecture"
+                  value={employeeForm.department}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, department: e.target.value })}
+                  className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Notes / Assigned Tasks</label>
+                <Textarea
+                  rows={2}
+                  placeholder="Optional notes or current project assignments..."
+                  value={employeeForm.notes}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, notes: e.target.value })}
+                  className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl resize-none"
+                />
+              </div>
+
+              <DialogFooter className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEmployeeModalOpen(false)}
+                  className="text-xs rounded-xl"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={saveEmployeeMutation.isPending}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-xl font-semibold shadow-xs"
+                >
+                  {saveEmployeeMutation.isPending
+                    ? 'Saving...'
+                    : editingEmployeeId
+                    ? 'Update Employee'
+                    : 'Create Employee'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         {/* ================= TAB: REVIEWS ================= */}
         {activeTab === 'reviews' && (
