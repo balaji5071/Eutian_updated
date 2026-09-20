@@ -7,6 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Lead as LeadType, Review as ReviewType, Prototype, Employee, EmployeeRole, BlogPost } from '@/shared/schema';
 import {
   LayoutGrid,
@@ -45,8 +53,18 @@ import {
   Share2,
   Languages,
   PenTool,
-  Check
+  Check,
+  Phone,
+  MessageSquare,
+  Copy,
+  Calendar,
+  DollarSign,
+  Clock,
+  ArrowUpRight,
+  Tag,
+  Briefcase
 } from 'lucide-react';
+import { SiWhatsapp } from 'react-icons/si';
 
 type LeadItem = Omit<LeadType, '_id' | 'createdAt'> & { id: string; createdAt: string };
 type Proto = Omit<Prototype, '_id' | 'createdAt'> & { id: string; createdAt: string };
@@ -474,6 +492,68 @@ export default function AdminPage() {
   // ================= INQUIRIES STATE =================
   const [leadSearch, setLeadSearch] = useState('');
   const [leadStatusFilter, setLeadStatusFilter] = useState<'all' | 'new' | 'contacted' | 'closed' | 'won'>('all');
+  const [selectedLead, setSelectedLead] = useState<LeadItem | null>(null);
+  const [modalNotes, setModalNotes] = useState('');
+  const [modalDealValue, setModalDealValue] = useState<string>('');
+  const [modalCurrency, setModalCurrency] = useState<'INR' | 'USD'>('INR');
+  const [modalPaymentStatus, setModalPaymentStatus] = useState<LeadItem['paymentStatus']>('pending');
+  const [modalFollowUpDate, setModalFollowUpDate] = useState('');
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (selectedLead) {
+      setModalNotes(selectedLead.notes || '');
+      setModalDealValue(selectedLead.dealValue !== undefined ? String(selectedLead.dealValue) : '');
+      setModalCurrency(selectedLead.currency || 'INR');
+      setModalPaymentStatus(selectedLead.paymentStatus || 'pending');
+      setModalFollowUpDate(selectedLead.followUpDate || '');
+    }
+  }, [selectedLead]);
+
+  const copyToClipboard = (text: string, key: string) => {
+    if (!text) return;
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      showToast(`Copied ${key} to clipboard!`);
+      setTimeout(() => setCopiedKey(null), 2000);
+    }
+  };
+
+  const getStatusBadge = (status: LeadItem['status']) => {
+    switch (status) {
+      case 'new':
+        return {
+          bg: 'bg-blue-50 text-blue-700 border-blue-200',
+          dot: 'bg-blue-500',
+          label: 'New',
+        };
+      case 'contacted':
+        return {
+          bg: 'bg-amber-50 text-amber-700 border-amber-200',
+          dot: 'bg-amber-500',
+          label: 'Contacted',
+        };
+      case 'won':
+        return {
+          bg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+          dot: 'bg-emerald-500',
+          label: 'Won Deal',
+        };
+      case 'closed':
+        return {
+          bg: 'bg-slate-100 text-slate-700 border-slate-200',
+          dot: 'bg-slate-400',
+          label: 'Closed',
+        };
+      default:
+        return {
+          bg: 'bg-slate-50 text-slate-700 border-slate-200',
+          dot: 'bg-slate-400',
+          label: status,
+        };
+    }
+  };
 
   const filteredLeads = useMemo(() => {
     return leadsData.filter((l) => {
@@ -484,7 +564,9 @@ export default function AdminPage() {
           l.name.toLowerCase().includes(q) ||
           l.email.toLowerCase().includes(q) ||
           (l.phone && l.phone.toLowerCase().includes(q)) ||
-          (l.message && l.message.toLowerCase().includes(q))
+          (l.message && l.message.toLowerCase().includes(q)) ||
+          (l.websiteType && l.websiteType.toLowerCase().includes(q)) ||
+          (l.plan && l.plan.toLowerCase().includes(q))
         );
       }
       return true;
@@ -502,9 +584,46 @@ export default function AdminPage() {
       if (!json.ok) throw new Error(json.error || 'Failed to update lead');
       return json;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ['leads'] });
+      setSelectedLead((prev) => (prev && prev.id === variables.id ? { ...prev, status: variables.status } : prev));
       showToast('Lead status updated!');
+    },
+  });
+
+  const updateLeadDetails = useMutation({
+    mutationFn: async ({
+      id,
+      ...updates
+    }: {
+      id: string;
+      status?: LeadItem['status'];
+      notes?: string;
+      dealValue?: number;
+      currency?: 'INR' | 'USD';
+      paymentStatus?: LeadItem['paymentStatus'];
+      followUpDate?: string;
+    }) => {
+      const res = await fetch('/api/leads', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...updates }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || 'Failed to update lead');
+      return json;
+    },
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ['leads'] });
+      setSelectedLead((prev) =>
+        prev && prev.id === variables.id
+          ? {
+              ...prev,
+              ...variables,
+            }
+          : prev
+      );
+      showToast('Inquiry details saved!');
     },
   });
 
@@ -515,11 +634,20 @@ export default function AdminPage() {
       if (!json.ok) throw new Error(json.error || 'Failed to delete');
       return json;
     },
-    onSuccess: () => {
+    onSuccess: (_, id) => {
       qc.invalidateQueries({ queryKey: ['leads'] });
+      if (selectedLead?.id === id) {
+        setSelectedLead(null);
+      }
       showToast('Lead deleted');
     },
   });
+
+  const handleDeleteLead = (id: string) => {
+    if (typeof window !== 'undefined' && window.confirm('Are you sure you want to delete this inquiry?')) {
+      removeLead.mutate(id);
+    }
+  };
 
   // ================= EMPLOYEES STATE =================
   const [showAddEmployeeForm, setShowAddEmployeeForm] = useState(false);
@@ -596,7 +724,23 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans flex flex-col md:flex-row antialiased selection:bg-indigo-500 selection:text-white">
       <Head>
-        <title>{postsSubTab === 'create' ? 'Create New Post — Admin Portal' : 'Posts — Admin Portal'}</title>
+        <title>
+          {activeTab === 'inquiries'
+            ? 'Inquiries — Admin Portal'
+            : activeTab === 'employees'
+            ? 'Employees — Admin Portal'
+            : activeTab === 'prototypes'
+            ? 'Prototypes — Admin Portal'
+            : activeTab === 'reviews'
+            ? 'Reviews — Admin Portal'
+            : activeTab === 'dashboard'
+            ? 'Dashboard — Admin Portal'
+            : activeTab === 'settings'
+            ? 'Settings — Admin Portal'
+            : postsSubTab === 'create'
+            ? 'Create New Post — Admin Portal'
+            : 'Posts — Admin Portal'}
+        </title>
         <meta name="robots" content="noindex,nofollow" />
       </Head>
 
@@ -1683,55 +1827,563 @@ export default function AdminPage() {
         {/* ================= TAB: INQUIRIES ================= */}
         {activeTab === 'inquiries' && (
           <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Inquiries</h1>
+            {/* Header & Controls */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Inquiries</h1>
+                  <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                    {leadsData.length} Total
+                  </span>
+                  {leadsData.some((l) => l.status === 'new') && (
+                    <span className="px-2 py-0.5 text-[11px] font-semibold rounded-full bg-blue-50 text-blue-700 border border-blue-200 animate-pulse">
+                      {leadsData.filter((l) => l.status === 'new').length} New
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Click on any client or message to view complete inquiry details and follow up.
+                </p>
+              </div>
+
+              {/* Filters & Search */}
+              <div className="flex flex-wrap items-center gap-2.5">
+                <div className="relative">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Input
+                    placeholder="Search by name, email, message..."
+                    value={leadSearch}
+                    onChange={(e) => setLeadSearch(e.target.value)}
+                    className="pl-9 pr-7 h-9 w-60 sm:w-72 text-xs bg-white rounded-xl border-slate-200 shadow-2xs"
+                  />
+                  {leadSearch && (
+                    <button
+                      onClick={() => setLeadSearch('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                <select
+                  value={leadStatusFilter}
+                  onChange={(e) => setLeadStatusFilter(e.target.value as any)}
+                  className="h-9 text-xs bg-white border border-slate-200 rounded-xl px-3 font-medium text-slate-700 shadow-2xs focus:ring-1 focus:ring-indigo-500 outline-none"
+                >
+                  <option value="all">All Status ({leadsData.length})</option>
+                  <option value="new">New ({leadsData.filter((l) => l.status === 'new').length})</option>
+                  <option value="contacted">Contacted ({leadsData.filter((l) => l.status === 'contacted').length})</option>
+                  <option value="won">Won Deal ({leadsData.filter((l) => l.status === 'won').length})</option>
+                  <option value="closed">Closed ({leadsData.filter((l) => l.status === 'closed').length})</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Inquiries Table Card */}
             <div className="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-100 text-slate-500 text-xs font-medium">
-                      <th className="py-3.5 px-6 font-semibold">Client Name</th>
-                      <th className="py-3.5 px-6 font-semibold">Contact</th>
-                      <th className="py-3.5 px-6 font-semibold">Status</th>
-                      <th className="py-3.5 px-6 font-semibold text-right">Actions</th>
+                    <tr className="border-b border-slate-100 text-slate-500 text-xs font-semibold bg-slate-50/50">
+                      <th className="py-3.5 px-6">Client & Inquiry</th>
+                      <th className="py-3.5 px-6">Contact</th>
+                      <th className="py-3.5 px-6">Status</th>
+                      <th className="py-3.5 px-6 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-xs">
-                    {filteredLeads.map((lead) => (
-                      <tr key={lead.id} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="py-4 px-6 font-semibold text-slate-900">
-                          {lead.name}
-                          <p className="text-[11px] text-slate-400 font-normal line-clamp-1">{lead.message}</p>
-                        </td>
-                        <td className="py-4 px-6 text-slate-600">
-                          <p>{lead.email}</p>
-                          <p className="text-[11px] text-slate-400">{lead.phone}</p>
-                        </td>
-                        <td className="py-4 px-6">
-                          <select
-                            value={lead.status}
-                            onChange={(e) => updateLeadStatus.mutate({ id: lead.id, status: e.target.value as any })}
-                            className="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 font-medium text-slate-700"
-                          >
-                            <option value="new">New</option>
-                            <option value="contacted">Contacted</option>
-                            <option value="won">Won Deal</option>
-                            <option value="closed">Closed</option>
-                          </select>
-                        </td>
-                        <td className="py-4 px-6 text-right">
-                          <button
-                            onClick={() => removeLead.mutate(lead.id)}
-                            className="text-rose-600 hover:text-rose-800 font-medium"
-                          >
-                            Delete
-                          </button>
+                    {filteredLeads.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="py-12 text-center text-slate-500">
+                          <div className="flex flex-col items-center justify-center space-y-2">
+                            <Mail className="w-8 h-8 text-slate-300" />
+                            <p className="font-medium text-slate-600">No inquiries found</p>
+                            <p className="text-xs text-slate-400">
+                              {leadSearch || leadStatusFilter !== 'all'
+                                ? 'Try adjusting your search query or filter'
+                                : 'Incoming client inquiries will appear here'}
+                            </p>
+                            {(leadSearch || leadStatusFilter !== 'all') && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setLeadSearch('');
+                                  setLeadStatusFilter('all');
+                                }}
+                                className="mt-2 text-xs h-7 rounded-lg"
+                              >
+                                Reset filters
+                              </Button>
+                            )}
+                          </div>
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      filteredLeads.map((lead) => {
+                        const badge = getStatusBadge(lead.status);
+                        return (
+                          <tr
+                            key={lead.id}
+                            onClick={() => setSelectedLead(lead)}
+                            className="hover:bg-indigo-50/40 transition-colors cursor-pointer group"
+                            title="Click to view full inquiry details"
+                          >
+                            <td className="py-4 px-6">
+                              <div className="flex items-start gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-700 font-bold flex items-center justify-center text-xs shrink-0 border border-indigo-100 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-2xs mt-0.5">
+                                  {lead.name ? lead.name.charAt(0).toUpperCase() : '?'}
+                                </div>
+                                <div className="min-w-0 max-w-md">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                                      {lead.name}
+                                    </span>
+                                    {lead.websiteType && (
+                                      <span className="text-[10px] px-1.5 py-0.2 rounded font-medium bg-slate-100 text-slate-600">
+                                        {lead.websiteType}
+                                      </span>
+                                    )}
+                                    {lead.plan && (
+                                      <span className="text-[10px] px-1.5 py-0.2 rounded font-medium bg-indigo-50 text-indigo-600 border border-indigo-100">
+                                        {lead.plan}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-[12px] text-slate-500 font-normal line-clamp-1 mt-0.5">
+                                    {lead.message}
+                                  </p>
+                                  <span className="text-[10px] text-indigo-500 font-medium opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-0.5 mt-0.5">
+                                    Click to view full details <ArrowUpRight className="w-2.5 h-2.5" />
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-4 px-6 text-slate-600" onClick={(e) => e.stopPropagation()}>
+                              <a
+                                href={`mailto:${lead.email}`}
+                                className="hover:text-indigo-600 hover:underline block font-medium"
+                                title="Send Email"
+                              >
+                                {lead.email}
+                              </a>
+                              {lead.phone && (
+                                <a
+                                  href={`tel:${lead.phone}`}
+                                  className="text-[11px] text-slate-400 hover:text-slate-600 block mt-0.5"
+                                  title="Call phone"
+                                >
+                                  {lead.phone}
+                                </a>
+                              )}
+                            </td>
+                            <td className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
+                              <select
+                                value={lead.status}
+                                onChange={(e) => updateLeadStatus.mutate({ id: lead.id, status: e.target.value as any })}
+                                className={`text-xs border rounded-lg px-2.5 py-1 font-medium transition-colors ${badge.bg}`}
+                              >
+                                <option value="new">New</option>
+                                <option value="contacted">Contacted</option>
+                                <option value="won">Won Deal</option>
+                                <option value="closed">Closed</option>
+                              </select>
+                            </td>
+                            <td className="py-4 px-6 text-right" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  onClick={() => setSelectedLead(lead)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+                                  title="View full inquiry details"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                  <span>View</span>
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteLead(lead.id)}
+                                  className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors"
+                                  title="Delete inquiry"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
             </div>
+
+            {/* Inquiry Details Modal */}
+            <Dialog open={!!selectedLead} onOpenChange={(open) => !open && setSelectedLead(null)}>
+              <DialogContent className="max-w-2xl sm:max-w-3xl max-h-[90vh] overflow-y-auto p-0 rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                {selectedLead && (
+                  <div className="flex flex-col">
+                    {/* Header Banner */}
+                    <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-indigo-50/30">
+                      <div className="flex items-start justify-between gap-4 pr-8">
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white font-bold flex items-center justify-center text-lg shadow-md shadow-indigo-100 shrink-0">
+                            {selectedLead.name ? selectedLead.name.charAt(0).toUpperCase() : '?'}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2.5 flex-wrap">
+                              <DialogTitle className="text-xl font-bold text-slate-900 tracking-tight">
+                                {selectedLead.name}
+                              </DialogTitle>
+                              <span
+                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                                  getStatusBadge(selectedLead.status).bg
+                                }`}
+                              >
+                                <span
+                                  className={`w-1.5 h-1.5 rounded-full ${getStatusBadge(selectedLead.status).dot}`}
+                                />
+                                {getStatusBadge(selectedLead.status).label}
+                              </span>
+                            </div>
+                            <DialogDescription className="text-xs text-slate-400 mt-1 flex items-center gap-1.5 flex-wrap">
+                              <Clock className="w-3.5 h-3.5 text-slate-400" />
+                              <span>
+                                Received{' '}
+                                {new Date(selectedLead.createdAt).toLocaleString(undefined, {
+                                  dateStyle: 'medium',
+                                  timeStyle: 'short',
+                                })}
+                              </span>
+                              {selectedLead.source && (
+                                <span>
+                                  • Source:{' '}
+                                  <strong className="text-slate-600 font-medium">{selectedLead.source}</strong>
+                                </span>
+                              )}
+                            </DialogDescription>
+                          </div>
+                        </div>
+
+                        {/* Quick Status Dropdown */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium text-slate-500 hidden sm:inline">Status:</span>
+                          <select
+                            value={selectedLead.status}
+                            onChange={(e) =>
+                              updateLeadStatus.mutate({ id: selectedLead.id, status: e.target.value as any })
+                            }
+                            className="text-xs font-semibold bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-700 shadow-xs focus:ring-1 focus:ring-indigo-500 outline-none"
+                          >
+                            <option value="new">🆕 New</option>
+                            <option value="contacted">💬 Contacted</option>
+                            <option value="won">🎉 Won Deal</option>
+                            <option value="closed">❌ Closed</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Quick Action Buttons */}
+                      <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-slate-200/60">
+                        <a
+                          href={`mailto:${selectedLead.email}?subject=${encodeURIComponent(
+                            'Regarding your inquiry at Eutian'
+                          )}`}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition-colors"
+                        >
+                          <Mail className="w-3.5 h-3.5" />
+                          <span>Email Client</span>
+                          <ArrowUpRight className="w-3 h-3 opacity-70" />
+                        </a>
+
+                        {selectedLead.phone && (
+                          <a
+                            href={`tel:${selectedLead.phone}`}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl shadow-xs transition-colors"
+                          >
+                            <Phone className="w-3.5 h-3.5 text-slate-500" />
+                            <span>Call ({selectedLead.phone})</span>
+                          </a>
+                        )}
+
+                        {(selectedLead.whatsapp || selectedLead.phone) && (
+                          <a
+                            href={`https://wa.me/${(selectedLead.whatsapp || selectedLead.phone || '').replace(
+                              /[^0-9]/g,
+                              ''
+                            )}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl shadow-xs transition-colors"
+                          >
+                            <SiWhatsapp className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>WhatsApp</span>
+                            <ArrowUpRight className="w-3 h-3 opacity-70" />
+                          </a>
+                        )}
+
+                        <button
+                          onClick={() => copyToClipboard(selectedLead.message, 'Inquiry Message')}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl shadow-xs transition-colors sm:ml-auto"
+                        >
+                          {copiedKey === 'Inquiry Message' ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5 text-slate-400" />
+                          )}
+                          <span>{copiedKey === 'Inquiry Message' ? 'Copied!' : 'Copy Inquiry'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Modal Body */}
+                    <div className="p-6 space-y-6">
+                      {/* Grid Info */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Contact Details Card */}
+                        <div className="p-4 rounded-xl bg-slate-50/70 border border-slate-200/70 space-y-3">
+                          <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                            <Users className="w-3.5 h-3.5 text-indigo-500" />
+                            Contact Details
+                          </h3>
+
+                          <div className="space-y-2 text-xs">
+                            <div className="flex items-center justify-between py-1 border-b border-slate-200/50">
+                              <span className="text-slate-400">Email</span>
+                              <div className="flex items-center gap-1.5">
+                                <a
+                                  href={`mailto:${selectedLead.email}`}
+                                  className="font-semibold text-slate-900 hover:text-indigo-600 hover:underline"
+                                >
+                                  {selectedLead.email}
+                                </a>
+                                <button
+                                  onClick={() => copyToClipboard(selectedLead.email, 'Email')}
+                                  className="text-slate-400 hover:text-slate-600 p-0.5"
+                                  title="Copy Email"
+                                >
+                                  {copiedKey === 'Email' ? (
+                                    <Check className="w-3 h-3 text-emerald-600" />
+                                  ) : (
+                                    <Copy className="w-3 h-3" />
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between py-1 border-b border-slate-200/50">
+                              <span className="text-slate-400">Phone</span>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-semibold text-slate-900">
+                                  {selectedLead.phone || 'Not provided'}
+                                </span>
+                                {selectedLead.phone && (
+                                  <button
+                                    onClick={() => copyToClipboard(selectedLead.phone!, 'Phone')}
+                                    className="text-slate-400 hover:text-slate-600 p-0.5"
+                                    title="Copy Phone"
+                                  >
+                                    {copiedKey === 'Phone' ? (
+                                      <Check className="w-3 h-3 text-emerald-600" />
+                                    ) : (
+                                      <Copy className="w-3 h-3" />
+                                    )}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between py-1 border-b border-slate-200/50">
+                              <span className="text-slate-400">WhatsApp</span>
+                              <span className="font-semibold text-slate-900">
+                                {selectedLead.whatsapp || selectedLead.phone || 'Not provided'}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between py-1">
+                              <span className="text-slate-400">Region</span>
+                              <span className="font-semibold text-slate-900 flex items-center gap-1">
+                                <Globe className="w-3 h-3 text-slate-400" />
+                                {selectedLead.region || 'India'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Requirement / Project Overview Card */}
+                        <div className="p-4 rounded-xl bg-slate-50/70 border border-slate-200/70 space-y-3">
+                          <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                            <Briefcase className="w-3.5 h-3.5 text-indigo-500" />
+                            Inquiry Requirements
+                          </h3>
+
+                          <div className="space-y-2 text-xs">
+                            <div className="flex items-center justify-between py-1 border-b border-slate-200/50">
+                              <span className="text-slate-400">Website / Project Type</span>
+                              <span className="font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                                {selectedLead.websiteType || 'General Inquiry'}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between py-1 border-b border-slate-200/50">
+                              <span className="text-slate-400">Plan Selected</span>
+                              <span className="font-semibold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md">
+                                {selectedLead.plan || 'Custom / None'}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between py-1 border-b border-slate-200/50">
+                              <span className="text-slate-400">Acquisition Source</span>
+                              <span className="font-semibold text-slate-700">
+                                {selectedLead.source || 'Direct'}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between py-1">
+                              <span className="text-slate-400">Deal Value</span>
+                              <span className="font-semibold text-emerald-600 font-mono">
+                                {selectedLead.dealValue
+                                  ? `${selectedLead.currency === 'USD' ? '$' : '₹'}${selectedLead.dealValue.toLocaleString()}`
+                                  : 'Not set'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Full Message Section */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                            <MessageSquare className="w-3.5 h-3.5 text-indigo-500" />
+                            Full Client Message / Requirement
+                          </h3>
+                          <span className="text-[11px] text-slate-400">
+                            {selectedLead.message ? `${selectedLead.message.length} characters` : ''}
+                          </span>
+                        </div>
+                        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-800 text-sm leading-relaxed whitespace-pre-wrap font-sans select-text shadow-inner">
+                          {selectedLead.message || 'No message content provided.'}
+                        </div>
+                      </div>
+
+                      {/* CRM Management / Notes & Deal Tracking */}
+                      <div className="p-4.5 rounded-xl border border-slate-200 bg-white space-y-4 shadow-2xs">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                            <Tag className="w-3.5 h-3.5 text-indigo-600" />
+                            Deal Tracking & Admin Notes
+                          </h3>
+                          <span className="text-[11px] text-slate-400">Internal only</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                          <div>
+                            <label className="block text-slate-500 font-medium mb-1">
+                              Deal Value ({modalCurrency})
+                            </label>
+                            <div className="flex rounded-lg shadow-xs overflow-hidden border border-slate-200">
+                              <select
+                                value={modalCurrency}
+                                onChange={(e) => setModalCurrency(e.target.value as any)}
+                                className="bg-slate-100 text-slate-700 px-2 text-xs font-bold border-r border-slate-200 outline-none"
+                              >
+                                <option value="INR">₹ INR</option>
+                                <option value="USD">$ USD</option>
+                              </select>
+                              <input
+                                type="number"
+                                value={modalDealValue}
+                                onChange={(e) => setModalDealValue(e.target.value)}
+                                placeholder="e.g. 25000"
+                                className="w-full px-2.5 py-1.5 text-xs outline-none bg-white font-mono"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-slate-500 font-medium mb-1">Payment Status</label>
+                            <select
+                              value={modalPaymentStatus}
+                              onChange={(e) => setModalPaymentStatus(e.target.value as any)}
+                              className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 shadow-xs outline-none focus:ring-1 focus:ring-indigo-500"
+                            >
+                              <option value="pending">Pending</option>
+                              <option value="in-progress">In Progress</option>
+                              <option value="payment-pending">Payment Pending</option>
+                              <option value="completed">Completed</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-slate-500 font-medium mb-1">Follow-up Date</label>
+                            <input
+                              type="date"
+                              value={modalFollowUpDate}
+                              onChange={(e) => setModalFollowUpDate(e.target.value)}
+                              className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 shadow-xs outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-slate-500 text-xs font-medium mb-1">
+                            Admin Follow-up Notes
+                          </label>
+                          <Textarea
+                            rows={2}
+                            placeholder="Add notes about calls, client requirements, quotes sent..."
+                            value={modalNotes}
+                            onChange={(e) => setModalNotes(e.target.value)}
+                            className="text-xs bg-slate-50/50 border-slate-200 rounded-xl resize-none"
+                          />
+                        </div>
+
+                        <div className="flex justify-end">
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              updateLeadDetails.mutate({
+                                id: selectedLead.id,
+                                notes: modalNotes,
+                                dealValue: modalDealValue ? parseFloat(modalDealValue) : undefined,
+                                currency: modalCurrency,
+                                paymentStatus: modalPaymentStatus,
+                                followUpDate: modalFollowUpDate,
+                              });
+                            }}
+                            disabled={updateLeadDetails.isPending}
+                            className="h-8 px-4 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-xs"
+                          >
+                            {updateLeadDetails.isPending ? 'Saving...' : 'Save Notes & Tracking'}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Modal Footer */}
+                    <div className="p-4 px-6 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between rounded-b-2xl">
+                      <button
+                        onClick={() => handleDeleteLead(selectedLead.id)}
+                        className="inline-flex items-center gap-1.5 text-xs font-medium text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete Inquiry
+                      </button>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedLead(null)}
+                        className="h-8 px-4 text-xs font-medium rounded-xl border-slate-200 text-slate-700 hover:bg-slate-100"
+                      >
+                        Close
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
           </div>
         )}
 
