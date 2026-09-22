@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { GetServerSideProps } from 'next';
 import Head from 'next/head';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -16,15 +17,25 @@ import {
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { BlogPost } from '@/shared/schema';
 
-type BlogItem = Omit<BlogPost, '_id' | 'createdAt'> & { id: string; createdAt: string };
+type BlogItem = Omit<BlogPost, '_id' | 'createdAt' | 'updatedAt' | 'publishedAt'> & { 
+  id: string; 
+  createdAt: string;
+  publishedAt?: string;
+  updatedAt?: string;
+};
 
-export default function BlogIndex() {
+interface BlogIndexProps {
+  initialBlogs: BlogItem[];
+}
+
+export default function BlogIndex({ initialBlogs = [] }: BlogIndexProps) {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { data: blogs = [], isLoading, isError } = useQuery<BlogItem[]>({
+  const { data: blogs = initialBlogs, isLoading, isError } = useQuery<BlogItem[]>({
     queryKey: ['public-blogs'],
     queryFn: async () => {
       const res = await fetch('/api/blogs');
@@ -32,6 +43,7 @@ export default function BlogIndex() {
       if (!json.ok) throw new Error(json.error || 'Failed to fetch blogs');
       return json.items as BlogItem[];
     },
+    initialData: initialBlogs,
     staleTime: 60_000,
   });
 
@@ -80,6 +92,11 @@ export default function BlogIndex() {
           name="description"
           content="Explore articles, guides, and thoughts on AI engineering, modern SaaS architectures, and full-stack development by Eutian."
         />
+        <link rel="canonical" href="https://www.eutian.com/blog" />
+        <meta property="og:title" content="Blog & Insights — Eutian" />
+        <meta property="og:description" content="Explore articles, guides, and thoughts on AI engineering, modern SaaS architectures, and full-stack development by Eutian." />
+        <meta property="og:url" content="https://www.eutian.com/blog" />
+        <meta property="og:type" content="website" />
       </Head>
 
       <div className="flex flex-col min-h-screen bg-background">
@@ -388,3 +405,55 @@ export default function BlogIndex() {
     </>
   );
 }
+
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  try {
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+    const blogsCollection = db.collection<BlogPost>('blogs');
+
+    const items = await blogsCollection
+      .find({ status: 'published' })
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    const initialBlogs: BlogItem[] = items.map((b) => ({
+      id: b._id?.toString() || '',
+      title: b.title,
+      slug: b.slug,
+      excerpt: b.excerpt || '',
+      content: b.content || '',
+      coverImage: b.coverImage || '',
+      category: b.category || 'General',
+      tags: Array.isArray(b.tags) ? b.tags : [],
+      author: {
+        name: b.author?.name || 'Eutian Team',
+        role: b.author?.role || 'Author',
+        avatar: b.author?.avatar || '/image.png',
+      },
+      status: b.status || 'published',
+      readingTime: b.readingTime || '5 min read',
+      publishedAt: b.publishedAt ? new Date(b.publishedAt).toISOString() : undefined,
+      createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : new Date().toISOString(),
+      updatedAt: b.updatedAt ? new Date(b.updatedAt).toISOString() : undefined,
+    }));
+
+    context.res.setHeader(
+      'Cache-Control',
+      'public, s-maxage=60, stale-while-revalidate=600'
+    );
+
+    return {
+      props: {
+        initialBlogs,
+      },
+    };
+  } catch (error) {
+    console.error('Error fetching blogs in getServerSideProps:', error);
+    return {
+      props: {
+        initialBlogs: [],
+      },
+    };
+  }
+};

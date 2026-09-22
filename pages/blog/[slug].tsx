@@ -1,8 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
+import { GetServerSideProps } from 'next';
 import Head from 'next/head';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
-import { useQuery } from '@tanstack/react-query';
 import { 
   ArrowLeft, 
   Calendar, 
@@ -16,9 +15,20 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { FaLinkedin, FaTwitter } from 'react-icons/fa';
+import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { BlogPost } from '@/shared/schema';
 
-type BlogItem = Omit<BlogPost, '_id' | 'createdAt'> & { id: string; createdAt: string };
+type BlogItem = Omit<BlogPost, '_id' | 'createdAt' | 'updatedAt' | 'publishedAt'> & { 
+  id: string; 
+  createdAt: string;
+  publishedAt?: string;
+  updatedAt?: string;
+};
+
+interface BlogPostDetailProps {
+  initialPost: BlogItem;
+  relatedPosts: BlogItem[];
+}
 
 // Helper to render markdown-like content into clean HTML components
 function MarkdownContent({ content }: { content: string }) {
@@ -118,40 +128,9 @@ function MarkdownContent({ content }: { content: string }) {
   return <div className="prose prose-invert max-w-none">{elements}</div>;
 }
 
-export default function BlogPostDetail() {
-  const router = useRouter();
-  const { slug } = router.query;
+export default function BlogPostDetail({ initialPost, relatedPosts = [] }: BlogPostDetailProps) {
   const [copied, setCopied] = useState(false);
-
-  // Fetch current post
-  const { data: currentPost, isLoading, isError } = useQuery<BlogItem | null>({
-    queryKey: ['blog-post', slug],
-    queryFn: async () => {
-      if (!slug) return null;
-      const res = await fetch(`/api/blogs?slug=${slug}`);
-      const json = await res.json();
-      if (!json.ok) throw new Error(json.error || 'Failed to fetch article');
-      return json.item as BlogItem;
-    },
-    enabled: !!slug,
-  });
-
-  // Fetch all posts for related section
-  const { data: allBlogs = [] } = useQuery<BlogItem[]>({
-    queryKey: ['public-blogs'],
-    queryFn: async () => {
-      const res = await fetch('/api/blogs');
-      const json = await res.json();
-      return (json.items || []) as BlogItem[];
-    },
-  });
-
-  const relatedPosts = useMemo(() => {
-    if (!currentPost) return [];
-    return allBlogs
-      .filter((b) => b.id !== currentPost.id)
-      .slice(0, 3);
-  }, [allBlogs, currentPost]);
+  const currentPost = initialPost;
 
   const handleCopyLink = () => {
     if (typeof window !== 'undefined') {
@@ -174,43 +153,95 @@ export default function BlogPostDetail() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center py-24">
-        <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4" />
-        <p className="text-muted-foreground text-sm">Loading article...</p>
-      </div>
-    );
-  }
+  const canonicalUrl = `https://www.eutian.com/blog/${currentPost.slug}`;
+  const currentUrl = typeof window !== 'undefined' ? window.location.href : canonicalUrl;
+  const isoPublishedDate = currentPost.publishedAt || currentPost.createdAt;
 
-  if (isError || !currentPost) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center py-24 px-4 text-center">
-        <BookOpen className="w-16 h-16 text-muted-foreground mb-4 opacity-50" />
-        <h1 className="font-heading font-bold text-2xl sm:text-3xl text-white mb-2">Article Not Found</h1>
-        <p className="text-muted-foreground text-sm max-w-md mb-6">
-          The article you are looking for might have been moved, removed, or is currently in draft mode.
-        </p>
-        <Link
-          href="/blog"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-black font-semibold text-sm hover:bg-primary/90 transition-all"
-        >
-          <ArrowLeft className="w-4 h-4" /> Back to All Articles
-        </Link>
-      </div>
-    );
-  }
+  // JSON-LD Schema for Googlebot
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': canonicalUrl,
+    },
+    headline: currentPost.title,
+    description: currentPost.excerpt,
+    image: currentPost.coverImage ? [currentPost.coverImage] : ['https://www.eutian.com/og-image.png'],
+    datePublished: isoPublishedDate,
+    dateModified: currentPost.updatedAt || isoPublishedDate,
+    author: {
+      '@type': 'Person',
+      name: currentPost.author?.name || 'Eutian Team',
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'Eutian',
+      logo: {
+        '@type': 'ImageObject',
+        url: 'https://www.eutian.com/image.png',
+      },
+    },
+  };
 
-  const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: 'https://www.eutian.com',
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Blog',
+        item: 'https://www.eutian.com/blog',
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: currentPost.title,
+        item: canonicalUrl,
+      },
+    ],
+  };
 
   return (
     <>
       <Head>
-        <title>{currentPost.title} — Eutian Blog</title>
+        <title>{`${currentPost.title} — Eutian Blog`}</title>
         <meta name="description" content={currentPost.excerpt} />
+        <link rel="canonical" href={canonicalUrl} />
+        
+        {/* Open Graph */}
+        <meta property="og:type" content="article" />
         <meta property="og:title" content={`${currentPost.title} — Eutian Blog`} />
         <meta property="og:description" content={currentPost.excerpt} />
+        <meta property="og:url" content={canonicalUrl} />
+        <meta property="og:site_name" content="Eutian" />
         {currentPost.coverImage && <meta property="og:image" content={currentPost.coverImage} />}
+        <meta property="article:published_time" content={isoPublishedDate} />
+        {currentPost.author?.name && <meta property="article:author" content={currentPost.author.name} />}
+        {currentPost.category && <meta property="article:section" content={currentPost.category} />}
+
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={`${currentPost.title} — Eutian Blog`} />
+        <meta name="twitter:description" content={currentPost.excerpt} />
+        {currentPost.coverImage && <meta name="twitter:image" content={currentPost.coverImage} />}
+
+        {/* Structured Data */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        />
       </Head>
 
       <div className="min-h-screen bg-background py-12 sm:py-16">
@@ -376,3 +407,87 @@ export default function BlogPostDetail() {
     </>
   );
 }
+
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const { slug } = context.params || {};
+
+  if (!slug || typeof slug !== 'string') {
+    return { notFound: true };
+  }
+
+  try {
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+    const blogsCollection = db.collection<BlogPost>('blogs');
+
+    const item = await blogsCollection.findOne({ slug, status: 'published' });
+
+    if (!item) {
+      return {
+        notFound: true,
+      };
+    }
+
+    // Related posts
+    const relatedItems = await blogsCollection
+      .find({ status: 'published', slug: { $ne: slug } })
+      .project({ title: 1, slug: 1, category: 1, coverImage: 1, createdAt: 1 })
+      .sort({ createdAt: -1 })
+      .limit(3)
+      .toArray();
+
+    const initialPost: BlogItem = {
+      id: item._id?.toString() || '',
+      title: item.title,
+      slug: item.slug,
+      excerpt: item.excerpt || '',
+      content: item.content || '',
+      coverImage: item.coverImage || '',
+      category: item.category || 'General',
+      tags: Array.isArray(item.tags) ? item.tags : [],
+      author: {
+        name: item.author?.name || 'Eutian Team',
+        role: item.author?.role || 'Author',
+        avatar: item.author?.avatar || '/image.png',
+      },
+      status: item.status || 'published',
+      readingTime: item.readingTime || '5 min read',
+      publishedAt: item.publishedAt ? new Date(item.publishedAt).toISOString() : undefined,
+      createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : new Date().toISOString(),
+      updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : undefined,
+    };
+
+    const relatedPosts: BlogItem[] = relatedItems.map((r) => ({
+      id: r._id?.toString() || '',
+      title: r.title,
+      slug: r.slug,
+      category: r.category || 'General',
+      coverImage: r.coverImage || '',
+      excerpt: '',
+      content: '',
+      tags: [],
+      author: { name: 'Eutian Team' },
+      status: 'published',
+      readingTime: '5 min read',
+      createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : new Date().toISOString(),
+    }));
+
+    // Cache-Control header for CDN edge caching
+    context.res.setHeader(
+      'Cache-Control',
+      'public, s-maxage=3600, stale-while-revalidate=86400'
+    );
+
+    return {
+      props: {
+        initialPost,
+        relatedPosts,
+      },
+    };
+  } catch (error) {
+    console.error('Error in blog slug getServerSideProps:', error);
+    return {
+      notFound: true,
+    };
+  }
+};
