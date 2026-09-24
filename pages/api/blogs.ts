@@ -12,6 +12,14 @@ function slugify(text: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+  },
+};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const client = await clientPromise;

@@ -115,6 +115,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const clean: any = {};
       ['name', 'email', 'password', 'role', 'department', 'status', 'assignedTasks', 'notes'].forEach((k) => {
         if (updates[k] !== undefined) {
+          if (k === 'password' && !updates[k]) return; // don't wipe password if left empty on edit
           if (k === 'email') clean[k] = updates[k].toLowerCase().trim();
           else clean[k] = updates[k];
         }

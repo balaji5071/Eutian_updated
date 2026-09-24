@@ -1,91 +1,162 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { MediaItem, Lead as LeadType, Review as ReviewType, Prototype, Employee, EmployeeRole, BlogPost } from '@/shared/schema';
 import {
-  LayoutDashboard,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Lead as LeadType, Review as ReviewType, Prototype, Employee, EmployeeRole, BlogPost } from '@/shared/schema';
+import {
+  LayoutGrid,
+  Mail,
+  Settings,
+  BookOpen,
+  FileText,
+  Plus,
   Users,
   FolderKanban,
   Star,
-  Mail,
-  Settings,
-  Plus,
-  RefreshCw,
   Download,
+  Upload,
+  Eye,
+  LogOut,
+  Globe,
+  ChevronDown,
+  ChevronUp,
+  ChevronLeft,
+  Search,
+  CheckCircle2,
+  XCircle,
+  Sprout,
+  UserCheck,
+  UserPlus,
   Trash2,
   Edit3,
-  Sprout,
-  Sparkles,
   ExternalLink,
-  BookOpen,
-  FileText,
-  PenTool,
   Menu,
   X,
-  Check,
-  Copy,
-  Search,
-  DollarSign,
-  TrendingUp,
-  LogOut,
-  Eye,
+  SlidersHorizontal,
+  AlignLeft,
+  Lock,
+  Target,
   Image as ImageIcon,
-  Video as VideoIcon,
-  Layers,
-  Tag,
+  Share2,
+  Languages,
+  PenTool,
+  Check,
+  Phone,
+  MessageSquare,
+  Copy,
   Calendar,
-  AlertCircle,
-  CheckCircle2,
-  Globe,
-  IndianRupee,
-  UserCheck,
-  Briefcase,
-  GraduationCap,
-  Code2,
-  Megaphone,
-  UserPlus
+  DollarSign,
+  Clock,
+  ArrowUpRight,
+  Tag,
+  Briefcase
 } from 'lucide-react';
+import { SiWhatsapp } from 'react-icons/si';
 
 type LeadItem = Omit<LeadType, '_id' | 'createdAt'> & { id: string; createdAt: string };
 type Proto = Omit<Prototype, '_id' | 'createdAt'> & { id: string; createdAt: string };
 type ReviewItem = { id: string; name: string; email?: string; rating: number; message: string; status: 'visible' | 'hidden'; createdAt: string };
 type BlogAdminItem = Omit<BlogPost, '_id' | 'createdAt'> & { id: string; createdAt: string };
 
-async function fetchLeads(): Promise<LeadItem[]> {
-  const res = await fetch('/api/leads');
-  const json = await res.json();
-  if (!json.ok) throw new Error(json.error || 'Failed to fetch leads');
-  return json.items as LeadItem[];
+const USD_TO_INR = 85;
+
+function compressDataUrl(
+  dataUrl: string,
+  maxWidth = 1600,
+  maxHeight = 900,
+  quality = 0.82
+): Promise<string> {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined' || !dataUrl.startsWith('data:image/') || dataUrl.startsWith('data:image/svg+xml')) {
+      return resolve(dataUrl);
+    }
+    const img = new Image();
+    img.onload = () => {
+      let width = img.naturalWidth || img.width;
+      let height = img.naturalHeight || img.height;
+
+      if (width > maxWidth || height > maxHeight) {
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return resolve(dataUrl);
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, width, height);
+
+      let compressed = canvas.toDataURL('image/webp', quality);
+      if (!compressed.startsWith('data:image/webp')) {
+        compressed = canvas.toDataURL('image/jpeg', quality);
+      }
+      resolve(compressed);
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
 }
 
-const USD_TO_INR = 85;
+function compressImageFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = async (e) => {
+      const raw = e.target?.result as string;
+      if (!raw) return reject(new Error('Failed to read image file'));
+      try {
+        const compressed = await compressDataUrl(raw);
+        resolve(compressed);
+      } catch {
+        resolve(raw);
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function AdminPage() {
   const router = useRouter();
   const qc = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'leads' | 'prototypes' | 'employees' | 'reviews' | 'blogs' | 'templates' | 'settings'>('leads');
+
+  // Navigation State
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'inquiries' | 'posts' | 'employees' | 'prototypes' | 'reviews' | 'settings'>('posts');
+  const [postsMenuExpanded, setPostsMenuExpanded] = useState(true);
+  const [postsSubTab, setPostsSubTab] = useState<'all' | 'create'>('all');
+  const [createPostEditorTab, setCreatePostEditorTab] = useState<'settings' | 'social' | 'i18n' | 'write'>('settings');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [leadSearch, setLeadSearch] = useState('');
-  const [leadStatusFilter, setLeadStatusFilter] = useState<'all' | 'new' | 'contacted' | 'closed' | 'won'>('all');
-  const [refreshingLeads, setRefreshingLeads] = useState(false);
-  const [refreshingProtos, setRefreshingProtos] = useState(false);
+
+  // General State
   const [isAuthChecking, setIsAuthChecking] = useState(true);
-  const [isSeeding, setIsSeeding] = useState(false);
-  const [isSeedingEmployees, setIsSeedingEmployees] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isCompressingImage, setIsCompressingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const coverImageInputRef = useRef<HTMLInputElement>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
   };
 
+  // Auth Verification
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -114,14 +185,19 @@ export default function AdminPage() {
     }
   };
 
-  // Queries
-  const { data: leadsData, isLoading: loadingLeads, isError: errorLeads, error: leadsErr } = useQuery({
+  // ================= QUERIES =================
+  const { data: leadsData = [], isLoading: loadingLeads } = useQuery<LeadItem[]>({
     queryKey: ['leads'],
-    queryFn: fetchLeads,
-    refetchOnWindowFocus: false
+    queryFn: async () => {
+      const res = await fetch('/api/leads');
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || 'Failed to fetch leads');
+      return json.items as LeadItem[];
+    },
+    refetchOnWindowFocus: false,
   });
 
-  const { data: protos, isLoading: loadingProtos } = useQuery({
+  const { data: protos = [] } = useQuery<Proto[]>({
     queryKey: ['prototypes'],
     queryFn: async () => {
       const r = await fetch('/api/prototypes');
@@ -131,7 +207,7 @@ export default function AdminPage() {
     },
   });
 
-  const { data: employees, isLoading: loadingEmployees } = useQuery({
+  const { data: employees = [] } = useQuery<Employee[]>({
     queryKey: ['employees'],
     queryFn: async () => {
       const r = await fetch('/api/employees');
@@ -141,234 +217,17 @@ export default function AdminPage() {
     },
   });
 
-  const { data: reviews, isLoading: loadingReviews } = useQuery({
+  const { data: reviews = [] } = useQuery<ReviewItem[]>({
     queryKey: ['reviews-admin'],
     queryFn: async () => {
       const r = await fetch('/api/reviews?all=1');
       const j = await r.json();
       if (!j.ok) throw new Error(j.error || 'Failed to fetch reviews');
       return j.items as ReviewItem[];
-    }
-  });
-
-  // Mutations
-  const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: LeadItem['status'] }) => {
-      const res = await fetch('/api/leads', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, status }),
-      });
-      const json = await res.json();
-      if (!json.ok) throw new Error(json.error || 'Failed to update lead');
-      return json;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['leads'] });
-      showToast('Lead status updated!');
     },
   });
 
-  const updateLeadDetails = useMutation({
-    mutationFn: async ({ id, ...details }: { id: string; notes?: string; dealValue?: number; currency?: string; paymentStatus?: string; followUpDate?: string; source?: string }) => {
-      const res = await fetch('/api/leads', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, ...details }),
-      });
-      const json = await res.json();
-      if (!json.ok) throw new Error(json.error || 'Failed to update lead details');
-      return json;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['leads'] });
-      setEditingLead(null);
-      showToast('Lead details saved!');
-    },
-  });
-
-  const removeLead = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`/api/leads?id=${id}`, { method: 'DELETE' });
-      const json = await res.json();
-      if (!json.ok) throw new Error(json.error || 'Failed to delete');
-      return json;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['leads'] });
-      showToast('Lead deleted');
-    },
-  });
-
-  // Employee Mutations
-  const createEmployeeMutation = useMutation({
-    mutationFn: async (empData: Partial<Employee>) => {
-      const r = await fetch('/api/employees', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(empData),
-      });
-      const j = await r.json();
-      if (!j.ok) throw new Error(j.error || 'Failed to create employee');
-      return j;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['employees'] });
-      setShowAddEmployeeForm(false);
-      setEmployeeForm({ name: '', email: '', password: '', role: 'sales', department: '', notes: '' });
-      showToast('Employee account created!');
-    },
-  });
-
-  const updateEmployeeMutation = useMutation({
-    mutationFn: async ({ id, ...updates }: { id: string } & Partial<Employee>) => {
-      const r = await fetch('/api/employees', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, ...updates }),
-      });
-      const j = await r.json();
-      if (!j.ok) throw new Error(j.error || 'Failed to update employee');
-      return j;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['employees'] });
-      showToast('Employee profile updated');
-    },
-  });
-
-  const deleteEmployeeMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const r = await fetch(`/api/employees?id=${id}`, { method: 'DELETE' });
-      const j = await r.json();
-      if (!j.ok) throw new Error(j.error || 'Failed to delete employee');
-      return j;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['employees'] });
-      showToast('Employee removed');
-    },
-  });
-
-  const handleSeedEmployees = async () => {
-    setIsSeedingEmployees(true);
-    try {
-      const res = await fetch('/api/employees', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'seed' }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        await qc.invalidateQueries({ queryKey: ['employees'] });
-        showToast('🌱 Sample team members (Sales, Marketing, Intern, Developer) created!');
-      } else {
-        alert(data.error || 'Failed to seed employees');
-      }
-    } catch (err: any) {
-      alert(`Seeding employees failed: ${err.message}`);
-    } finally {
-      setIsSeedingEmployees(false);
-    }
-  };
-
-  const createProto = useMutation({
-    mutationFn: async (p: Omit<Proto, 'id' | 'createdAt'>) => {
-      const r = await fetch('/api/prototypes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) });
-      const j = await r.json();
-      if (!j.ok) throw new Error(j.error || 'Failed to create prototype');
-      return j;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['prototypes'] });
-      setShowAddProtoForm(false);
-      showToast('Prototype created successfully!');
-    },
-  });
-
-  const updateProto = useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Proto> }) => {
-      const r = await fetch('/api/prototypes', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...updates }) });
-      const j = await r.json();
-      if (!j.ok) throw new Error(j.error || 'Failed to update prototype');
-      return j;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['prototypes'] });
-      setEditProto(null);
-      showToast('Prototype updated!');
-    },
-  });
-
-  const deleteProto = useMutation({
-    mutationFn: async (id: string) => {
-      const r = await fetch(`/api/prototypes?id=${id}`, { method: 'DELETE' });
-      const j = await r.json();
-      if (!j.ok) throw new Error(j.error || 'Failed to delete');
-      return j;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['prototypes'] });
-      showToast('Prototype deleted');
-    },
-  });
-
-  const deleteReview = useMutation({
-    mutationFn: async (id: string) => {
-      const r = await fetch(`/api/reviews?id=${id}`, { method: 'DELETE' });
-      const j = await r.json();
-      if (!j.ok) throw new Error(j.error || 'Failed to delete review');
-      return j;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['reviews-admin'] });
-      showToast('Review deleted');
-    },
-  });
-
-  const handleSeedPrototypes = async () => {
-    setIsSeeding(true);
-    try {
-      const res = await fetch('/api/prototypes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'seed' }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        await qc.invalidateQueries({ queryKey: ['prototypes'] });
-        showToast('🌱 High-quality prototype templates seeded successfully!');
-      } else {
-        alert(data.error || 'Failed to seed prototypes');
-      }
-    } catch (err: any) {
-      alert(`Seeding failed: ${err.message}`);
-    } finally {
-      setIsSeeding(false);
-    }
-  };
-
-  // ============= BLOG MANAGEMENT STATE & MUTATIONS =============
-  const [blogSearch, setBlogSearch] = useState('');
-  const [blogStatusFilter, setBlogStatusFilter] = useState<'all' | 'published' | 'draft'>('all');
-  const [isSeedingBlogs, setIsSeedingBlogs] = useState(false);
-  const [showAddBlogForm, setShowAddBlogForm] = useState(false);
-  const [editingBlogId, setEditingBlogId] = useState<string | null>(null);
-  const [blogForm, setBlogForm] = useState({
-    title: '',
-    slug: '',
-    category: 'Web Development',
-    coverImage: '',
-    readingTime: '5 min read',
-    authorName: 'Balaji',
-    authorRole: 'Founder & CEO',
-    excerpt: '',
-    content: '',
-    tags: 'Tech, Web Dev, Engineering',
-    status: 'published' as 'published' | 'draft',
-  });
-
-  const { data: blogsData, isLoading: loadingBlogs } = useQuery<BlogAdminItem[]>({
+  const { data: blogs = [], isLoading: loadingBlogs } = useQuery<BlogAdminItem[]>({
     queryKey: ['admin-blogs'],
     queryFn: async () => {
       const res = await fetch('/api/blogs?admin=1');
@@ -377,7 +236,83 @@ export default function AdminPage() {
       return json.items as BlogAdminItem[];
     },
   });
-  const blogs = useMemo(() => blogsData ?? [], [blogsData]);
+
+  // ================= POSTS & POST FORM STATE =================
+  const [blogSearch, setBlogSearch] = useState('');
+  const [blogStatusFilter, setBlogStatusFilter] = useState<'all' | 'published' | 'draft'>('all');
+  const [isSeedingBlogs, setIsSeedingBlogs] = useState(false);
+  const [editingBlogId, setEditingBlogId] = useState<string | null>(null);
+
+  // Post Editor Detailed Form State (Matching Reference)
+  const [postForm, setPostForm] = useState({
+    title: '',
+    targetKeyword: '',
+    slug: '',
+    metaDescription: '',
+    coverImage: '',
+    altText: '',
+    category: 'Engineering',
+    authorName: 'Eutian Team',
+    authorRole: 'Tech & Architecture',
+    publishDate: new Date().toISOString().split('T')[0],
+    tags: '',
+    canonicalUrl: '',
+    isFeatured: false,
+    isNoIndex: false,
+    isDraft: true,
+    content: '',
+    readingTime: '5 min read',
+    // Social media fields
+    ogTitle: '',
+    ogDescription: '',
+    // i18n
+    locale: 'en',
+  });
+
+  // Calculate SEO metrics live based on inputs
+  const seoChecklist = useMemo(() => {
+    const kw = postForm.targetKeyword.trim().toLowerCase();
+    const title = postForm.title.trim().toLowerCase();
+    const meta = postForm.metaDescription.trim();
+    const alt = postForm.altText.trim();
+    const content = postForm.content.toLowerCase();
+
+    const hasKwInTitle = kw.length > 0 && title.includes(kw);
+    const metaLengthOk = meta.length >= 80 && meta.length <= 160;
+    const altLengthOk = alt.length >= 20;
+    const titleLengthOk = title.length >= 30 && title.length <= 70;
+    const hasKwInMeta = kw.length > 0 && meta.toLowerCase().includes(kw);
+
+    // Calculate density
+    let keywordDensity = 0;
+    if (kw.length > 0 && content.length > 0) {
+      const words = content.split(/\s+/).filter(Boolean);
+      const kwOccurrences = (content.match(new RegExp(kw, 'gi')) || []).length;
+      if (words.length > 0) {
+        keywordDensity = Number(((kwOccurrences / words.length) * 100).toFixed(1));
+      }
+    }
+
+    let score = 0;
+    if (hasKwInTitle) score += 30;
+    if (metaLengthOk) score += 25;
+    else if (meta.length > 0) score += 10;
+    if (altLengthOk) score += 20;
+    else if (alt.length > 0) score += 5;
+    if (titleLengthOk) score += 15;
+    if (hasKwInMeta) score += 10;
+
+    return {
+      score: Math.min(100, Math.max(0, score)),
+      hasKwInTitle,
+      metaLengthOk,
+      metaLength: meta.length,
+      altLengthOk,
+      altLength: alt.length,
+      keywordDensity,
+      status: score >= 80 ? 'Good' : score >= 50 ? 'Needs Improvement' : 'Needs Work',
+    };
+  }, [postForm]);
 
   const filteredBlogs = useMemo(() => {
     return blogs.filter((b) => {
@@ -396,81 +331,84 @@ export default function AdminPage() {
     });
   }, [blogs, blogStatusFilter, blogSearch]);
 
+  // Save Mutation
   const saveBlogMutation = useMutation({
-    mutationFn: async (data: typeof blogForm) => {
+    mutationFn: async (data: typeof postForm) => {
       const isEdit = !!editingBlogId;
       const url = '/api/blogs';
       const method = isEdit ? 'PATCH' : 'POST';
-      const body = isEdit ? { id: editingBlogId, ...data } : data;
+
+      let coverImage = data.coverImage || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80';
+      if (coverImage.startsWith('data:image/') && coverImage.length > 300_000) {
+        try {
+          coverImage = await compressDataUrl(coverImage);
+        } catch (e) {
+          console.warn('Cover image auto-compression skipped:', e);
+        }
+      }
+
+      const payload = {
+        title: data.title,
+        slug: data.slug || data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+        category: data.category || 'Engineering',
+        coverImage,
+        readingTime: data.readingTime || '5 min read',
+        authorName: data.authorName || 'Balaji',
+        authorRole: data.authorRole || 'Founder & CEO',
+        excerpt: data.metaDescription || data.title,
+        content: data.content || `## ${data.title}\n\nStart writing your thoughts here...`,
+        tags: data.tags,
+        status: data.isDraft ? 'draft' : 'published',
+      };
+
+      const body = isEdit ? { id: editingBlogId, ...payload } : payload;
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      const json = await res.json();
-      if (!json.ok) throw new Error(json.error || 'Failed to save blog post');
+      const text = await res.text();
+      let json: any = {};
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error(text || `Server error (${res.status}): ${res.statusText}`);
+      }
+      if (!res.ok || !json.ok) throw new Error(json.error || 'Failed to save blog post');
       return json;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-blogs'] });
       qc.invalidateQueries({ queryKey: ['public-blogs'] });
-      showToast(editingBlogId ? 'Blog post updated successfully!' : 'Blog post created successfully!');
-      setShowAddBlogForm(false);
+      showToast(editingBlogId ? 'Post updated successfully!' : 'Post published successfully!');
+      setPostsSubTab('all');
       setEditingBlogId(null);
-      setBlogForm({
-        title: '',
-        slug: '',
-        category: 'Web Development',
-        coverImage: '',
-        readingTime: '5 min read',
-        authorName: 'Balaji',
-        authorRole: 'Founder & CEO',
-        excerpt: '',
-        content: '',
-        tags: 'Tech, Web Dev, Engineering',
-        status: 'published',
-      });
     },
     onError: (err: any) => {
-      alert(`Error saving blog: ${err.message}`);
-    },
-  });
-
-  const toggleBlogStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: 'published' | 'draft' }) => {
-      const res = await fetch('/api/blogs', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, status }),
-      });
-      const json = await res.json();
-      if (!json.ok) throw new Error(json.error || 'Failed to toggle status');
-      return json;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-blogs'] });
-      qc.invalidateQueries({ queryKey: ['public-blogs'] });
-      showToast('Blog status updated!');
-    },
-    onError: (err: any) => {
-      alert(`Failed to update status: ${err.message}`);
+      alert(`Error saving post: ${err.message}`);
     },
   });
 
   const deleteBlogMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/blogs?id=${id}`, { method: 'DELETE' });
-      const json = await res.json();
-      if (!json.ok) throw new Error(json.error || 'Failed to delete blog post');
+      const text = await res.text();
+      let json: any = {};
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error(text || `Failed to delete post (${res.status})`);
+      }
+      if (!res.ok || !json.ok) throw new Error(json.error || 'Failed to delete post');
       return json;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-blogs'] });
       qc.invalidateQueries({ queryKey: ['public-blogs'] });
-      showToast('Blog post deleted.');
+      showToast('Post deleted successfully');
     },
     onError: (err: any) => {
-      alert(`Failed to delete blog: ${err.message}`);
+      alert(`Failed to delete: ${err.message}`);
     },
   });
 
@@ -482,13 +420,19 @@ export default function AdminPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'seed' }),
       });
-      const json = await res.json();
+      const text = await res.text();
+      let json: any = {};
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error(text || `Failed to seed posts (${res.status})`);
+      }
       if (json.ok) {
         await qc.invalidateQueries({ queryKey: ['admin-blogs'] });
         await qc.invalidateQueries({ queryKey: ['public-blogs'] });
-        showToast('🌱 Initial blog posts seeded successfully!');
+        showToast('Sample posts loaded successfully!');
       } else {
-        alert(json.error || 'Failed to seed blogs');
+        alert(json.error || 'Failed to seed posts');
       }
     } catch (err: any) {
       alert(`Seed failed: ${err.message}`);
@@ -497,9 +441,223 @@ export default function AdminPage() {
     }
   };
 
-  const leads = useMemo(() => leadsData ?? [], [leadsData]);
+  // Export JSON
+  const handleExportJSON = () => {
+    if (!blogs || blogs.length === 0) {
+      alert('No posts available to export.');
+      return;
+    }
+    const cleanData = blogs.map(({ id, ...rest }) => rest);
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(cleanData, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute('href', dataStr);
+    downloadAnchor.setAttribute('download', `eutian-posts-${new Date().toISOString().split('T')[0]}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    showToast('Exported posts as JSON!');
+  };
+
+  // Import JSON
+  const handleImportJSONClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const items = Array.isArray(parsed) ? parsed : [parsed];
+
+      let count = 0;
+      for (const item of items) {
+        if (!item.title || !item.content) continue;
+        await fetch('/api/blogs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: item.title,
+            slug: item.slug || item.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+            category: item.category || 'Engineering',
+            coverImage: item.coverImage || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
+            readingTime: item.readingTime || '5 min read',
+            authorName: item.authorName || item.author?.name || 'Balaji',
+            authorRole: item.authorRole || item.author?.role || 'Founder & CEO',
+            excerpt: item.excerpt || item.title,
+            content: item.content,
+            tags: Array.isArray(item.tags) ? item.tags.join(', ') : item.tags || 'Tech',
+            status: item.status || 'published',
+          }),
+        });
+        count++;
+      }
+
+      await qc.invalidateQueries({ queryKey: ['admin-blogs'] });
+      await qc.invalidateQueries({ queryKey: ['public-blogs'] });
+      showToast(`Successfully imported ${count} post${count === 1 ? '' : 's'}!`);
+    } catch (err: any) {
+      alert(`JSON import failed: ${err.message}`);
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  // Handle Cover Image Upload
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsCompressingImage(true);
+      showToast('Optimizing cover image...');
+      const compressedDataUrl = await compressImageFile(file);
+      setPostForm((prev) => ({ ...prev, coverImage: compressedDataUrl }));
+      showToast('Cover image optimized and loaded!');
+    } catch (err: any) {
+      console.error('Error optimizing image:', err);
+      // Fallback
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        if (result) {
+          setPostForm((prev) => ({ ...prev, coverImage: result }));
+          showToast('Cover image loaded!');
+        }
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsCompressingImage(false);
+      if (coverImageInputRef.current) coverImageInputRef.current.value = '';
+    }
+  };
+
+  // Open Create Mode
+  const handleStartCreate = () => {
+    setEditingBlogId(null);
+    setPostForm({
+      title: '',
+      targetKeyword: '',
+      slug: '',
+      metaDescription: '',
+      coverImage: '',
+      altText: '',
+      category: 'Artificial Intelligence',
+      authorName: 'Eutian Team',
+      authorRole: 'Tech & Architecture',
+      publishDate: new Date().toISOString().split('T')[0],
+      tags: '',
+      canonicalUrl: '',
+      isFeatured: false,
+      isNoIndex: false,
+      isDraft: true,
+      content: '',
+      readingTime: '5 min read',
+      ogTitle: '',
+      ogDescription: '',
+      locale: 'en',
+    });
+    setPostsSubTab('create');
+  };
+
+  // Open Edit Mode
+  const handleStartEdit = (post: BlogAdminItem) => {
+    setEditingBlogId(post.id);
+    setPostForm({
+      title: post.title,
+      targetKeyword: Array.isArray(post.tags) && post.tags.length > 0 ? post.tags[0] : '',
+      slug: post.slug,
+      metaDescription: post.excerpt || '',
+      coverImage: post.coverImage || '',
+      altText: post.title,
+      category: post.category || 'Engineering',
+      authorName: post.author?.name || 'Balaji',
+      authorRole: post.author?.role || 'Founder & CEO',
+      publishDate: post.createdAt ? new Date(post.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      tags: Array.isArray(post.tags) ? post.tags.join(', ') : '',
+      canonicalUrl: '',
+      isFeatured: false,
+      isNoIndex: false,
+      isDraft: post.status === 'draft',
+      content: post.content || '',
+      readingTime: post.readingTime || '5 min read',
+      ogTitle: post.title,
+      ogDescription: post.excerpt || '',
+      locale: 'en',
+    });
+    setPostsSubTab('create');
+  };
+
+  // ================= INQUIRIES STATE =================
+  const [leadSearch, setLeadSearch] = useState('');
+  const [leadStatusFilter, setLeadStatusFilter] = useState<'all' | 'new' | 'contacted' | 'closed' | 'won'>('all');
+  const [selectedLead, setSelectedLead] = useState<LeadItem | null>(null);
+  const [modalNotes, setModalNotes] = useState('');
+  const [modalDealValue, setModalDealValue] = useState<string>('');
+  const [modalCurrency, setModalCurrency] = useState<'INR' | 'USD'>('INR');
+  const [modalPaymentStatus, setModalPaymentStatus] = useState<LeadItem['paymentStatus']>('pending');
+  const [modalFollowUpDate, setModalFollowUpDate] = useState('');
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (selectedLead) {
+      setModalNotes(selectedLead.notes || '');
+      setModalDealValue(selectedLead.dealValue !== undefined ? String(selectedLead.dealValue) : '');
+      setModalCurrency(selectedLead.currency || 'INR');
+      setModalPaymentStatus(selectedLead.paymentStatus || 'pending');
+      setModalFollowUpDate(selectedLead.followUpDate || '');
+    }
+  }, [selectedLead]);
+
+  const copyToClipboard = (text: string, key: string) => {
+    if (!text) return;
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      showToast(`Copied ${key} to clipboard!`);
+      setTimeout(() => setCopiedKey(null), 2000);
+    }
+  };
+
+  const getStatusBadge = (status: LeadItem['status']) => {
+    switch (status) {
+      case 'new':
+        return {
+          bg: 'bg-blue-50 text-blue-700 border-blue-200',
+          dot: 'bg-blue-500',
+          label: 'New',
+        };
+      case 'contacted':
+        return {
+          bg: 'bg-amber-50 text-amber-700 border-amber-200',
+          dot: 'bg-amber-500',
+          label: 'Contacted',
+        };
+      case 'won':
+        return {
+          bg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+          dot: 'bg-emerald-500',
+          label: 'Won Deal',
+        };
+      case 'closed':
+        return {
+          bg: 'bg-slate-100 text-slate-700 border-slate-200',
+          dot: 'bg-slate-400',
+          label: 'Closed',
+        };
+      default:
+        return {
+          bg: 'bg-slate-50 text-slate-700 border-slate-200',
+          dot: 'bg-slate-400',
+          label: status,
+        };
+    }
+  };
+
   const filteredLeads = useMemo(() => {
-    return leads.filter(l => {
+    return leadsData.filter((l) => {
       if (leadStatusFilter !== 'all' && l.status !== leadStatusFilter) return false;
       if (leadSearch) {
         const q = leadSearch.toLowerCase();
@@ -507,1385 +665,2772 @@ export default function AdminPage() {
           l.name.toLowerCase().includes(q) ||
           l.email.toLowerCase().includes(q) ||
           (l.phone && l.phone.toLowerCase().includes(q)) ||
-          (l.message && l.message.toLowerCase().includes(q))
+          (l.message && l.message.toLowerCase().includes(q)) ||
+          (l.websiteType && l.websiteType.toLowerCase().includes(q)) ||
+          (l.plan && l.plan.toLowerCase().includes(q))
         );
       }
       return true;
     });
-  }, [leads, leadStatusFilter, leadSearch]);
+  }, [leadsData, leadStatusFilter, leadSearch]);
 
-  const metrics = useMemo(() => {
-    const total = leads.length;
-    const newCount = leads.filter(l => l.status === 'new').length;
-    const contacted = leads.filter(l => l.status === 'contacted').length;
-    const closed = leads.filter(l => l.status === 'closed').length;
-    const won = leads.filter(l => l.status === 'won').length;
+  const updateLeadStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: LeadItem['status'] }) => {
+      const res = await fetch('/api/leads', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || 'Failed to update lead');
+      return json;
+    },
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ['leads'] });
+      setSelectedLead((prev) => (prev && prev.id === variables.id ? { ...prev, status: variables.status } : prev));
+      showToast('Lead status updated!');
+    },
+  });
 
-    const paidLeads = leads.filter(l =>
-      l.status === 'won' &&
-      l.dealValue &&
-      (l.paymentStatus === 'completed' || l.paymentStatus === 'payment-pending')
-    );
+  const updateLeadDetails = useMutation({
+    mutationFn: async ({
+      id,
+      ...updates
+    }: {
+      id: string;
+      status?: LeadItem['status'];
+      notes?: string;
+      dealValue?: number;
+      currency?: 'INR' | 'USD';
+      paymentStatus?: LeadItem['paymentStatus'];
+      followUpDate?: string;
+    }) => {
+      const res = await fetch('/api/leads', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...updates }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || 'Failed to update lead');
+      return json;
+    },
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ['leads'] });
+      setSelectedLead((prev) =>
+        prev && prev.id === variables.id
+          ? {
+              ...prev,
+              ...variables,
+            }
+          : prev
+      );
+      showToast('Inquiry details saved!');
+    },
+  });
 
-    const indiaRevenueINR = paidLeads
-      .filter(l => l.region === 'India' && (!l.currency || l.currency === 'INR'))
-      .reduce((sum, l) => sum + (l.dealValue || 0), 0);
+  const removeLead = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/leads?id=${id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || 'Failed to delete');
+      return json;
+    },
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: ['leads'] });
+      if (selectedLead?.id === id) {
+        setSelectedLead(null);
+      }
+      showToast('Lead deleted');
+    },
+  });
 
-    const globalRevenueUSD = paidLeads
-      .filter(l => l.region === 'Global' && l.currency === 'USD')
-      .reduce((sum, l) => sum + (l.dealValue || 0), 0);
-
-    const globalRevenueINR = globalRevenueUSD * USD_TO_INR;
-    const totalRevenueINR = indiaRevenueINR + globalRevenueINR;
-
-    const pendingValue = leads.filter(l =>
-      (l.status === 'new' || l.status === 'contacted' || (l.status === 'won' && l.paymentStatus === 'in-progress')) &&
-      l.dealValue
-    ).reduce((sum, l) => {
-      const value = l.dealValue || 0;
-      return sum + (l.currency === 'USD' ? value * USD_TO_INR : value);
-    }, 0);
-
-    const protoCount = protos?.length || 0;
-    const empCount = employees?.length || 0;
-    const reviewCount = reviews?.length || 0;
-    const blogCount = blogs?.length || 0;
-    const publishedBlogCount = blogs?.filter(b => b.status === 'published').length || 0;
-    const draftBlogCount = blogs?.filter(b => b.status === 'draft').length || 0;
-    const conversionRate = total > 0 ? ((won / total) * 100).toFixed(1) : '0';
-
-    return {
-      total,
-      new: newCount,
-      contacted,
-      closed,
-      won,
-      indiaRevenueINR,
-      globalRevenueUSD,
-      globalRevenueINR,
-      totalRevenueINR,
-      pendingValue,
-      protoCount,
-      empCount,
-      reviewCount,
-      blogCount,
-      publishedBlogCount,
-      draftBlogCount,
-      conversionRate
-    };
-  }, [leads, protos, employees, reviews, blogs]);
-
-  const exportToCSV = () => {
-    const headers = ['Date', 'Name', 'Email', 'Phone', 'WhatsApp', 'Plan', 'Website Type', 'Region', 'Status', 'Deal Value', 'Currency', 'Payment Status', 'Source', 'Message'];
-    const rows = filteredLeads.map(l => [
-      new Date(l.createdAt).toLocaleDateString(),
-      l.name,
-      l.email,
-      l.phone || '',
-      l.whatsapp || '',
-      l.plan || '',
-      l.websiteType || '',
-      l.region,
-      l.status,
-      l.dealValue || '',
-      l.currency || '',
-      l.paymentStatus || '',
-      l.source || '',
-      l.message.replace(/,/g, ';').replace(/\n/g, ' ')
-    ]);
-    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `eutian-leads-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
-  const bulkUpdateStatus = async (status: LeadItem['status']) => {
-    for (const id of selectedLeads) {
-      await updateStatus.mutateAsync({ id, status });
+  const handleDeleteLead = (id: string) => {
+    if (typeof window !== 'undefined' && window.confirm('Are you sure you want to delete this inquiry?')) {
+      removeLead.mutate(id);
     }
-    setSelectedLeads([]);
   };
 
-  // Prototype Form
-  const [showAddProtoForm, setShowAddProtoForm] = useState(false);
-  const [form, setForm] = useState({
+  // ================= PROTOTYPES STATE =================
+  const [prototypeModalOpen, setPrototypeModalOpen] = useState(false);
+  const [editingPrototypeId, setEditingPrototypeId] = useState<string | null>(null);
+  const [isCompressingProtoImage, setIsCompressingProtoImage] = useState(false);
+  const protoImageInputRef = useRef<HTMLInputElement>(null);
+
+  const initialProtoForm = {
     title: '',
-    media: [{ type: 'image' as 'image' | 'video', url: '', order: 0 }],
     category: 'SaaS',
     description: '',
-    techStack: '',
-    features: ''
-  });
-  const [editProto, setEditProto] = useState<null | Proto>(null);
+    imageUrl: '',
+    techStack: 'Next.js, React, Tailwind CSS',
+    features: 'Responsive Grid Layout\nInteractive Real-time Charts\nFast Performance',
+  };
+  const [prototypeForm, setPrototypeForm] = useState(initialProtoForm);
 
-  // Employee Form
-  const [showAddEmployeeForm, setShowAddEmployeeForm] = useState(false);
-  const [employeeForm, setEmployeeForm] = useState({
+  const savePrototypeMutation = useMutation({
+    mutationFn: async (form: typeof prototypeForm) => {
+      const isEdit = !!editingPrototypeId;
+      const url = '/api/prototypes';
+      const method = isEdit ? 'PATCH' : 'POST';
+
+      let imageUrl = form.imageUrl || 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80';
+      if (imageUrl.startsWith('data:image/') && imageUrl.length > 300_000) {
+        try {
+          imageUrl = await compressDataUrl(imageUrl);
+        } catch (e) {
+          console.warn('Proto image compression skipped:', e);
+        }
+      }
+
+      const payload = {
+        title: form.title.trim(),
+        category: form.category || 'SaaS',
+        description: form.description.trim(),
+        imageUrl,
+        techStack: form.techStack.split(',').map((s) => s.trim()).filter(Boolean),
+        features: form.features.split('\n').map((s) => s.trim()).filter(Boolean),
+      };
+
+      const body = isEdit ? { id: editingPrototypeId, ...payload } : payload;
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const text = await res.text();
+      let json: any = {};
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error(text || `Server error (${res.status})`);
+      }
+      if (!res.ok || !json.ok) throw new Error(json.error || 'Failed to save prototype');
+      return json;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['prototypes'] });
+      qc.invalidateQueries({ queryKey: ['prototypes-public'] });
+      setPrototypeModalOpen(false);
+      setEditingPrototypeId(null);
+      setPrototypeForm(initialProtoForm);
+      showToast(editingPrototypeId ? 'Prototype updated successfully!' : 'Prototype added successfully!');
+    },
+    onError: (err: any) => {
+      alert(`Error saving prototype: ${err.message}`);
+    },
+  });
+
+  const deletePrototypeMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/prototypes?id=${id}`, { method: 'DELETE' });
+      const text = await res.text();
+      let json: any = {};
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error(text || `Failed to delete prototype (${res.status})`);
+      }
+      if (!res.ok || !json.ok) throw new Error(json.error || 'Failed to delete prototype');
+      return json;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['prototypes'] });
+      qc.invalidateQueries({ queryKey: ['prototypes-public'] });
+      showToast('Prototype deleted successfully');
+    },
+    onError: (err: any) => {
+      alert(`Error deleting prototype: ${err.message}`);
+    },
+  });
+
+  const seedPrototypesMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/prototypes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'seed' }),
+      });
+      const text = await res.text();
+      let json: any = {};
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error(text || 'Failed to seed prototypes');
+      }
+      if (!res.ok || !json.ok) throw new Error(json.error || 'Failed to seed prototypes');
+      return json;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['prototypes'] });
+      qc.invalidateQueries({ queryKey: ['prototypes-public'] });
+      showToast('Sample prototypes seeded successfully!');
+    },
+    onError: (err: any) => {
+      alert(`Seed failed: ${err.message}`);
+    },
+  });
+
+  const handleProtoImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsCompressingProtoImage(true);
+      showToast('Optimizing image...');
+      const compressedDataUrl = await compressImageFile(file);
+      setPrototypeForm((prev) => ({ ...prev, imageUrl: compressedDataUrl }));
+      showToast('Cover image loaded!');
+    } catch (err) {
+      console.error(err);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        if (result) setPrototypeForm((prev) => ({ ...prev, imageUrl: result }));
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsCompressingProtoImage(false);
+      if (protoImageInputRef.current) protoImageInputRef.current.value = '';
+    }
+  };
+
+  const handleStartEditPrototype = (proto: Proto) => {
+    setEditingPrototypeId(proto.id);
+    const mediaUrl = proto.media?.[0]?.url || (proto as any).image || (proto as any).images?.[0] || '';
+    setPrototypeForm({
+      title: proto.title || '',
+      category: proto.category || 'SaaS',
+      description: proto.description || '',
+      imageUrl: mediaUrl,
+      techStack: Array.isArray(proto.techStack) ? proto.techStack.join(', ') : '',
+      features: Array.isArray(proto.features) ? proto.features.join('\n') : '',
+    });
+    setPrototypeModalOpen(true);
+  };
+
+  const handleStartCreatePrototype = () => {
+    setEditingPrototypeId(null);
+    setPrototypeForm(initialProtoForm);
+    setPrototypeModalOpen(true);
+  };
+
+  // ================= EMPLOYEES STATE =================
+  const [employeeModalOpen, setEmployeeModalOpen] = useState(false);
+  const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null);
+
+  const initialEmployeeForm = {
     name: '',
     email: '',
     password: '',
     role: 'sales' as EmployeeRole,
-    department: '',
-    notes: ''
-  });
-
-  const [editingLead, setEditingLead] = useState<LeadItem | null>(null);
-  const [leadDetails, setLeadDetails] = useState<{ notes: string; dealValue: string; currency: 'INR' | 'USD'; paymentStatus: string; followUpDate: string; source: string }>({
+    department: 'Sales & Business Development',
+    status: 'active' as 'active' | 'inactive',
     notes: '',
-    dealValue: '',
-    currency: 'INR',
-    paymentStatus: 'pending',
-    followUpDate: '',
-    source: ''
+  };
+  const [employeeForm, setEmployeeForm] = useState(initialEmployeeForm);
+
+  const saveEmployeeMutation = useMutation({
+    mutationFn: async (form: typeof employeeForm) => {
+      const isEdit = !!editingEmployeeId;
+      const url = '/api/employees';
+      const method = isEdit ? 'PATCH' : 'POST';
+
+      const payload: any = {
+        name: form.name.trim(),
+        email: form.email.trim(),
+        role: form.role,
+        department: form.department || `${form.role.toUpperCase()} Department`,
+        status: form.status,
+        notes: form.notes,
+      };
+
+      if (!isEdit || form.password) {
+        payload.password = form.password;
+      }
+
+      const body = isEdit ? { id: editingEmployeeId, ...payload } : payload;
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const text = await res.text();
+      let json: any = {};
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error(text || `Server error (${res.status})`);
+      }
+      if (!res.ok || !json.ok) throw new Error(json.error || 'Failed to save employee');
+      return json;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['employees'] });
+      setEmployeeModalOpen(false);
+      setEditingEmployeeId(null);
+      setEmployeeForm(initialEmployeeForm);
+      showToast(editingEmployeeId ? 'Employee updated successfully!' : 'New employee created successfully!');
+    },
+    onError: (err: any) => {
+      alert(`Error saving employee: ${err.message}`);
+    },
   });
 
-  const emailTemplates = {
-    pricing: {
-      subject: 'Eutian Pricing Details & Project Proposal',
-      body: `Hi {{name}},\n\nThank you for reaching out to Eutian!\n\nOur web design & development plans:\n\n⚡ Express Plan: ₹4,199 / $99 (24-72 hours delivery)\n💼 Standard Plan: ₹10,499 / $249 (3-5 days delivery)\n👑 Premium Plan: ₹20,999 / $499 (5-7 days delivery)\n\nAll plans include responsive UI, SEO optimization, speed enhancement, and dedicated post-launch support.\n\nBest regards,\nEutian Team\n+91 9346163673`
+  const deleteEmployeeMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/employees?id=${id}`, { method: 'DELETE' });
+      const text = await res.text();
+      let json: any = {};
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error(text || `Failed to delete employee (${res.status})`);
+      }
+      if (!res.ok || !json.ok) throw new Error(json.error || 'Failed to delete employee');
+      return json;
     },
-    availability: {
-      subject: 'Project Timeline & Availability — Eutian',
-      body: `Hi {{name}},\n\nThank you for contacting us!\n\nWe currently have availability for new projects starting this week. Timelines:\n- Express: 2-3 days\n- Standard: 5-7 days\n- Custom: 10-14 days\n\nBest regards,\nEutian Team`
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['employees'] });
+      showToast('Employee removed');
     },
-    followup: {
-      subject: 'Following up on your website inquiry',
-      body: `Hi {{name}},\n\nFollowing up on your inquiry for {{plan}} package. We're ready whenever you are!\n\nBest regards,\nEutian Team`
-    }
+    onError: (err: any) => {
+      alert(`Error deleting employee: ${err.message}`);
+    },
+  });
+
+  const seedEmployeesMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/employees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'seed' }),
+      });
+      const text = await res.text();
+      let json: any = {};
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error(text || 'Failed to seed employees');
+      }
+      if (!res.ok || !json.ok) throw new Error(json.error || 'Failed to seed employees');
+      return json;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['employees'] });
+      showToast('Sample employees loaded successfully!');
+    },
+    onError: (err: any) => {
+      alert(`Seed failed: ${err.message}`);
+    },
+  });
+
+  const handleStartEditEmployee = (emp: Employee) => {
+    setEditingEmployeeId(emp.id || (emp as any)._id?.toString() || null);
+    setEmployeeForm({
+      name: emp.name || '',
+      email: emp.email || '',
+      password: '',
+      role: emp.role || 'sales',
+      department: emp.department || '',
+      status: emp.status || 'active',
+      notes: emp.notes || '',
+    });
+    setEmployeeModalOpen(true);
   };
 
-  const [bannerSettings, setBannerSettings] = useState({
-    title: "Special Offer",
-    discount: '30% OFF',
-    endDate: '2026-12-31T23:59:59',
-    description: 'Elevate your online presence with Eutian custom web builds'
-  });
+  const handleStartCreateEmployee = () => {
+    setEditingEmployeeId(null);
+    setEmployeeForm(initialEmployeeForm);
+    setEmployeeModalOpen(true);
+  };
+
+  const metrics = useMemo(() => {
+    const total = leadsData.length;
+    const newCount = leadsData.filter((l) => l.status === 'new').length;
+    return {
+      total,
+      new: newCount,
+      postCount: blogs.length,
+      publishedCount: blogs.filter((b) => b.status === 'published').length,
+      empCount: employees.length,
+      protoCount: protos.length,
+      reviewCount: reviews.length,
+    };
+  }, [leadsData, blogs, employees, protos, reviews]);
 
   if (isAuthChecking) {
     return (
-      <section className="min-h-screen bg-slate-950 text-white flex items-center justify-center py-20">
+      <section className="min-h-screen bg-slate-50 text-slate-800 flex items-center justify-center py-20 font-sans">
         <Head>
-          <title>Admin Dashboard — Eutian</title>
+          <title>Admin Portal — Eutian</title>
           <meta name="robots" content="noindex,nofollow" />
         </Head>
-        <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-slate-400 font-medium">Verifying admin session...</p>
+        <div className="text-center space-y-3">
+          <div className="w-10 h-10 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-slate-500 text-sm font-medium">Verifying admin session...</p>
         </div>
       </section>
     );
   }
 
-  const navItems: {
-    id: 'leads' | 'prototypes' | 'employees' | 'reviews' | 'blogs' | 'templates' | 'settings';
-    label: string;
-    icon: any;
-    count?: number;
-  }[] = [
-    { id: 'leads', label: 'Leads & Inquiries', icon: Users, count: metrics.total },
-    { id: 'blogs', label: 'Blog & Articles', icon: BookOpen, count: metrics.blogCount },
-    { id: 'prototypes', label: 'Prototypes Gallery', icon: FolderKanban, count: metrics.protoCount },
-    { id: 'employees', label: 'Employees & Team', icon: UserCheck, count: metrics.empCount },
-    { id: 'reviews', label: 'Customer Reviews', icon: Star, count: metrics.reviewCount },
-    { id: 'templates', label: 'Email Templates', icon: Mail },
-    { id: 'settings', label: 'Offer Settings', icon: Settings },
-  ];
-
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-emerald-500 selection:text-white font-sans flex flex-col md:flex-row">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans flex flex-col md:flex-row antialiased selection:bg-indigo-500 selection:text-white">
       <Head>
-        <title>Admin Dashboard — Eutian</title>
+        <title>
+          {activeTab === 'inquiries'
+            ? 'Inquiries — Admin Portal'
+            : activeTab === 'employees'
+            ? 'Employees — Admin Portal'
+            : activeTab === 'prototypes'
+            ? 'Prototypes — Admin Portal'
+            : activeTab === 'reviews'
+            ? 'Reviews — Admin Portal'
+            : activeTab === 'dashboard'
+            ? 'Dashboard — Admin Portal'
+            : activeTab === 'settings'
+            ? 'Settings — Admin Portal'
+            : postsSubTab === 'create'
+            ? 'Create New Post — Admin Portal'
+            : 'Posts — Admin Portal'}
+        </title>
         <meta name="robots" content="noindex,nofollow" />
       </Head>
 
+      {/* Hidden File Inputs */}
+      <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
+      <input type="file" ref={coverImageInputRef} onChange={handleCoverUpload} accept="image/*" className="hidden" />
+
+      {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-5 right-5 z-50 flex items-center gap-3 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-2xl animate-in slide-in-from-top duration-300 border border-emerald-400/40 text-sm font-medium">
-          <CheckCircle2 className="w-5 h-5 text-white" />
+        <div className="fixed top-5 right-5 z-50 flex items-center gap-2.5 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-xl border border-slate-800 text-xs font-medium animate-in slide-in-from-top duration-200">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           {toastMessage}
         </div>
       )}
 
-      {/* Mobile Top Header */}
-      <div className="md:hidden flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
+      {/* Mobile Topbar */}
+      <div className="md:hidden flex items-center justify-between px-5 py-3.5 bg-white border-b border-slate-200 sticky top-0 z-40">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center font-bold text-sm text-black shadow-md shadow-emerald-500/20">
-            E
+          <div className="w-8 h-8 rounded-lg bg-slate-950 text-white flex items-center justify-center font-bold text-xs tracking-wider shadow-sm">
+            EU
           </div>
-          <span className="font-bold text-base text-white">Eutian Console</span>
+          <span className="font-bold text-sm text-slate-900">Admin Portal</span>
         </div>
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="text-slate-300 hover:text-white"
+          className="text-slate-600 hover:text-slate-900 h-8 w-8 p-0"
         >
           {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </Button>
       </div>
 
-      {/* Left Sidebar Navigation */}
+      {/* ================= LEFT SIDEBAR (Matching Reference 1:1) ================= */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-72 bg-slate-900/95 backdrop-blur-2xl border-r border-slate-800/80 flex flex-col justify-between transition-transform duration-300 md:translate-x-0 md:sticky md:top-0 md:h-screen ${
+        className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200/90 flex flex-col justify-between transition-transform duration-200 md:translate-x-0 md:sticky md:top-0 md:h-screen ${
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {/* Brand Header */}
-        <div className="p-6 border-b border-slate-800/80">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20 font-bold text-lg text-black">
-              E
+        <div className="flex flex-col flex-1 min-h-0">
+          {/* Brand Header */}
+          <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-slate-950 text-white flex items-center justify-center font-extrabold text-xs tracking-wider shadow-sm">
+              EU
             </div>
-            <div>
-              <h1 className="font-bold text-base tracking-tight text-white">Eutian Console</h1>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span className="text-[11px] font-medium text-emerald-400">Superadmin Active</span>
-              </div>
-            </div>
+            <span className="font-bold text-base text-slate-900 tracking-tight">Admin Portal</span>
           </div>
-        </div>
 
-        {/* Nav Links */}
-        <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
-          <p className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
-            Navigation Menu
-          </p>
+          {/* Nav List */}
+          <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+            {/* Dashboard */}
+            <button
+              onClick={() => {
+                setActiveTab('dashboard');
+                setMobileMenuOpen(false);
+              }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-colors ${
+                activeTab === 'dashboard'
+                  ? 'bg-indigo-50/80 text-indigo-600 font-semibold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              <LayoutGrid className="w-4 h-4 text-slate-400" />
+              <span>Dashboard</span>
+            </button>
 
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            return (
+            {/* Inquiries */}
+            <button
+              onClick={() => {
+                setActiveTab('inquiries');
+                setMobileMenuOpen(false);
+              }}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-colors ${
+                activeTab === 'inquiries'
+                  ? 'bg-indigo-50/80 text-indigo-600 font-semibold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Mail className="w-4 h-4 text-slate-400" />
+                <span>Inquiries</span>
+              </div>
+              {metrics.new > 0 && (
+                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-md bg-indigo-100 text-indigo-700">
+                  {metrics.new}
+                </span>
+              )}
+            </button>
+
+            {/* Settings */}
+            <button
+              onClick={() => {
+                setActiveTab('settings');
+                setMobileMenuOpen(false);
+              }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-colors ${
+                activeTab === 'settings'
+                  ? 'bg-indigo-50/80 text-indigo-600 font-semibold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              <SlidersHorizontal className="w-4 h-4 text-slate-400" />
+              <span>Settings</span>
+            </button>
+
+            {/* Posts (Collapsible Accordion) */}
+            <div className="pt-1">
               <button
-                key={item.id}
                 onClick={() => {
-                  setActiveTab(item.id as any);
-                  setMobileMenuOpen(false);
+                  setActiveTab('posts');
+                  setPostsMenuExpanded(!postsMenuExpanded);
                 }}
-                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-medium transition-all ${
-                  isActive
-                    ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-md shadow-emerald-500/5 font-semibold'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-colors ${
+                  activeTab === 'posts'
+                    ? 'text-indigo-600 font-semibold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                 }`}
-                data-testid={`sidebar-tab-${item.id}`}
               >
                 <div className="flex items-center gap-3">
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-400'}`} />
-                  <span>{item.label}</span>
+                  <FileText className={`w-4 h-4 ${activeTab === 'posts' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                  <span>Posts</span>
                 </div>
-                {item.count !== undefined && (
-                  <span
-                    className={`px-2 py-0.5 text-[11px] font-semibold rounded-full ${
-                      isActive ? 'bg-emerald-500/30 text-emerald-200' : 'bg-slate-800 text-slate-400'
-                    }`}
-                  >
-                    {item.count}
-                  </span>
+                {postsMenuExpanded ? (
+                  <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                 )}
               </button>
-            );
-          })}
-        </nav>
 
-        {/* Sidebar Footer */}
-        <div className="p-4 border-t border-slate-800/80 space-y-2 bg-slate-900/40">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.push('/employee')}
-            className="w-full justify-start bg-slate-950/60 border-slate-800 text-slate-300 hover:bg-slate-800 text-xs gap-2 h-9"
+              {postsMenuExpanded && (
+                <div className="mt-1 ml-4 pl-3 border-l border-slate-200/70 space-y-1">
+                  {/* All Posts */}
+                  <button
+                    onClick={() => {
+                      setActiveTab('posts');
+                      setPostsSubTab('all');
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-colors ${
+                      activeTab === 'posts' && postsSubTab === 'all'
+                        ? 'bg-indigo-50/90 text-indigo-600 font-semibold'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-normal'
+                    }`}
+                  >
+                    <AlignLeft className="w-3.5 h-3.5" />
+                    <span>All Posts</span>
+                  </button>
+
+                  {/* Create Post */}
+                  <button
+                    onClick={() => {
+                      setActiveTab('posts');
+                      handleStartCreate();
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-colors ${
+                      activeTab === 'posts' && postsSubTab === 'create'
+                        ? 'bg-indigo-50/90 text-indigo-600 font-semibold'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-normal'
+                    }`}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Create Post</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Additional Modules */}
+            <div className="pt-2">
+              <p className="px-3.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                Management
+              </p>
+
+              {/* Employees */}
+              <button
+                onClick={() => {
+                  setActiveTab('employees');
+                  setMobileMenuOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-colors ${
+                  activeTab === 'employees'
+                    ? 'bg-indigo-50/80 text-indigo-600 font-semibold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                }`}
+              >
+                <UserCheck className="w-4 h-4 text-slate-400" />
+                <span>Employees</span>
+              </button>
+
+              {/* Prototypes */}
+              <button
+                onClick={() => {
+                  setActiveTab('prototypes');
+                  setMobileMenuOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-colors ${
+                  activeTab === 'prototypes'
+                    ? 'bg-indigo-50/80 text-indigo-600 font-semibold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                }`}
+              >
+                <FolderKanban className="w-4 h-4 text-slate-400" />
+                <span>Prototypes</span>
+              </button>
+
+              {/* Reviews */}
+              <button
+                onClick={() => {
+                  setActiveTab('reviews');
+                  setMobileMenuOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-colors ${
+                  activeTab === 'reviews'
+                    ? 'bg-indigo-50/80 text-indigo-600 font-semibold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                }`}
+              >
+                <Star className="w-4 h-4 text-slate-400" />
+                <span>Reviews</span>
+              </button>
+            </div>
+          </nav>
+        </div>
+
+        {/* Sidebar Bottom: Admin Profile Card & Actions */}
+        <div className="p-4 border-t border-slate-100 space-y-3 bg-white">
+          <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50/80 border border-slate-100">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-200 border border-slate-300 flex-shrink-0">
+                <img
+                  src="/images/balaji.png"
+                  alt="Admin User"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
+                />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-slate-900 truncate">Balaji Ch</p>
+                <p className="text-[11px] text-slate-400 truncate">Superadmin</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className="text-slate-400 hover:text-slate-600 p-1"
+              title="Settings"
+            >
+              <Settings className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <a
+            href="/blog"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-colors"
           >
-            <UserCheck className="w-3.5 h-3.5 text-purple-400" />
-            Employee Portal Demo
-          </Button>
+            <Globe className="w-4 h-4 text-slate-400" />
+            <span>View Blog</span>
+          </a>
 
-          <Button
-            variant="outline"
-            size="sm"
-            asChild
-            className="w-full justify-start bg-slate-950/60 border-slate-800 text-slate-300 hover:bg-slate-800 text-xs gap-2 h-9"
-          >
-            <Link href="/" target="_blank">
-              <ExternalLink className="w-3.5 h-3.5 text-indigo-400" />
-              View Public Site
-            </Link>
-          </Button>
-
-          <Button
-            variant="destructive"
-            size="sm"
+          <button
             onClick={handleLogout}
-            className="w-full justify-start bg-rose-950/40 border border-rose-800/30 text-rose-300 hover:bg-rose-900/60 text-xs gap-2 h-9"
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
           >
-            <LogOut className="w-3.5 h-3.5" />
-            Logout
-          </Button>
+            <LogOut className="w-4 h-4 text-rose-500" />
+            <span>Sign Out</span>
+          </button>
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen bg-slate-950 overflow-y-auto">
-        {/* Top Header */}
-        <header className="sticky top-0 z-30 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/80 px-6 sm:px-8 py-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-white tracking-tight capitalize">
-              {activeTab === 'blogs'
-                ? 'Blog & Insights Manager'
-                : activeTab === 'leads'
-                ? 'Leads & Client Inquiries'
-                : activeTab === 'prototypes'
-                ? 'Prototypes Gallery'
-                : activeTab === 'employees'
-                ? 'Employees & Staff'
-                : activeTab === 'reviews'
-                ? 'Customer Reviews'
-                : activeTab === 'templates'
-                ? 'Email Templates'
-                : 'Offer & Banner Settings'}
-            </h2>
-            <p className="text-xs text-slate-400">
-              Eutian Management Console • Live Data
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={refreshingLeads}
-              onClick={async () => {
-                setRefreshingLeads(true);
-                await qc.invalidateQueries();
-                showToast('Refreshed all data!');
-                setTimeout(() => setRefreshingLeads(false), 400);
-              }}
-              className="bg-slate-900 border-slate-800 hover:bg-slate-800 text-slate-300 text-xs gap-1.5 h-9"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${refreshingLeads ? 'animate-spin' : ''}`} />
-              Sync Data
-            </Button>
-          </div>
-        </header>
-
-        {/* Main Dashboard Content */}
-        <main className="flex-1 p-6 sm:p-8 space-y-8 max-w-7xl w-full mx-auto">
-          {/* Analytics Cards */}
-          <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="bg-slate-900/60 border-slate-800/80 p-5 rounded-2xl backdrop-blur-md shadow-xl">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Leads</span>
-                <div className="p-2 bg-indigo-500/10 text-indigo-400 rounded-xl">
-                  <Users className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="mt-3 flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold text-white">{metrics.total}</span>
-                <span className="text-xs text-slate-400">received</span>
-              </div>
-              <div className="mt-2 text-xs text-indigo-400/80 font-medium">
-                {metrics.new} New • {metrics.won} Won Deals
-              </div>
-            </Card>
-
-            <Card className="bg-slate-900/60 border-slate-800/80 p-5 rounded-2xl backdrop-blur-md shadow-xl">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Team Staff</span>
-                <div className="p-2 bg-purple-500/10 text-purple-400 rounded-xl">
-                  <UserCheck className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="mt-3 flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold text-purple-300">{metrics.empCount}</span>
-                <span className="text-xs text-slate-400">employees</span>
-              </div>
-              <div className="mt-2 text-xs text-purple-400 font-medium">
-                Sales, Marketing, Interns & Devs
-              </div>
-            </Card>
-
-            <Card className="bg-slate-900/60 border-slate-800/80 p-5 rounded-2xl backdrop-blur-md shadow-xl">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Revenue</span>
-                <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl">
-                  <IndianRupee className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="mt-3 flex items-baseline gap-1">
-                <span className="text-3xl font-extrabold text-emerald-400">₹{metrics.totalRevenueINR.toLocaleString()}</span>
-              </div>
-              <div className="mt-2 text-xs text-emerald-400/80">
-                IN: ₹{metrics.indiaRevenueINR.toLocaleString()} • Global: ${metrics.globalRevenueUSD}
-              </div>
-            </Card>
-
-            <Card className="bg-slate-900/60 border-slate-800/80 p-5 rounded-2xl backdrop-blur-md shadow-xl">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Prototypes</span>
-                <div className="p-2 bg-amber-500/10 text-amber-400 rounded-xl">
-                  <FolderKanban className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="mt-3 flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold text-amber-300">{metrics.protoCount}</span>
-                <span className="text-xs text-slate-400">active gallery</span>
-              </div>
-              <div className="mt-2 text-xs text-amber-400/80 font-medium">
-                1-Click Seed Available
-              </div>
-            </Card>
-          </section>
-
-        {/* ================= TAB: EMPLOYEES MANAGEMENT ================= */}
-        {activeTab === 'employees' && (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/60 border border-slate-800 p-5 rounded-2xl">
-              <div>
-                <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  <UserCheck className="w-5 h-5 text-purple-400" />
-                  Employee Directory & Role Access
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">Create team accounts for Sales, Marketing, Interns, and Developers with dedicated role dashboards</p>
-              </div>
-
+      {/* ================= MAIN CONTENT AREA ================= */}
+      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto px-6 sm:px-10 py-8 max-w-7xl mx-auto w-full">
+        {/* ================= POSTS: CREATE / EDIT VIEW (Matching Reference 1:1) ================= */}
+        {activeTab === 'posts' && postsSubTab === 'create' && (
+          <div className="space-y-6 pb-24 animate-in fade-in-50 duration-200">
+            {/* Header with Back Arrow */}
+            <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <Button
-                  onClick={handleSeedEmployees}
-                  disabled={isSeedingEmployees}
-                  variant="outline"
-                  className="bg-emerald-950/40 border-emerald-700/50 hover:bg-emerald-900/60 text-emerald-300 text-xs gap-1.5"
+                <button
+                  onClick={() => setPostsSubTab('all')}
+                  className="w-9 h-9 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-600 hover:text-slate-900 shadow-xs transition-colors"
+                  title="Back to Posts"
                 >
-                  <Sprout className="w-4 h-4 text-emerald-400" />
-                  {isSeedingEmployees ? 'Seeding...' : 'Seed Sample Team'}
-                </Button>
-
-                <Button
-                  onClick={() => setShowAddEmployeeForm(!showAddEmployeeForm)}
-                  className="bg-purple-600 hover:bg-purple-500 text-white text-xs gap-1.5 shadow-lg shadow-purple-600/30"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  {showAddEmployeeForm ? 'Close Form' : 'Add Employee'}
-                </Button>
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+                  {editingBlogId ? 'Edit Post' : 'Create New Post'}
+                </h1>
               </div>
+
+              {postForm.slug && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const fullUrl = `${window.location.origin}/blog/${postForm.slug}`;
+                    navigator.clipboard.writeText(fullUrl);
+                    showToast('Blog link copied to clipboard!');
+                  }}
+                  className="text-xs flex items-center gap-1.5 border-slate-200 text-slate-700 bg-white hover:bg-slate-50 rounded-xl"
+                >
+                  <Copy className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Copy Public Link</span>
+                </Button>
+              )}
             </div>
 
-            {/* Create Employee Form */}
-            {showAddEmployeeForm && (
-              <Card className="bg-slate-900 border-slate-800 p-6 rounded-2xl shadow-2xl space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                  <h3 className="font-bold text-base text-white">Create New Employee Account</h3>
-                  <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white" onClick={() => setShowAddEmployeeForm(false)}>✕</Button>
+            {/* Sub Tabs Navigation */}
+            <div className="flex items-center gap-8 border-b border-slate-200/80 text-xs font-semibold text-slate-500 overflow-x-auto pb-0.5">
+              <button
+                onClick={() => setCreatePostEditorTab('settings')}
+                className={`pb-3 transition-colors relative whitespace-nowrap ${
+                  createPostEditorTab === 'settings'
+                    ? 'text-indigo-600 border-b-2 border-indigo-600 font-bold'
+                    : 'hover:text-slate-800'
+                }`}
+              >
+                Settings & SEO
+              </button>
+
+              <button
+                onClick={() => setCreatePostEditorTab('social')}
+                className={`pb-3 transition-colors relative whitespace-nowrap ${
+                  createPostEditorTab === 'social'
+                    ? 'text-indigo-600 border-b-2 border-indigo-600 font-bold'
+                    : 'hover:text-slate-800'
+                }`}
+              >
+                Social Media Optimization
+              </button>
+
+              <button
+                onClick={() => setCreatePostEditorTab('i18n')}
+                className={`pb-3 transition-colors relative whitespace-nowrap ${
+                  createPostEditorTab === 'i18n'
+                    ? 'text-indigo-600 border-b-2 border-indigo-600 font-bold'
+                    : 'hover:text-slate-800'
+                }`}
+              >
+                Internationalization
+              </button>
+
+              <button
+                onClick={() => setCreatePostEditorTab('write')}
+                className={`pb-3 transition-colors relative whitespace-nowrap ${
+                  createPostEditorTab === 'write'
+                    ? 'text-indigo-600 border-b-2 border-indigo-600 font-bold'
+                    : 'hover:text-slate-800'
+                }`}
+              >
+                Write Post
+              </button>
+            </div>
+
+            {/* TAB CONTENT: SETTINGS & SEO */}
+            {createPostEditorTab === 'settings' && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* Left Column: Post Details & Cover Media (Span 7) */}
+                <div className="lg:col-span-7 space-y-6">
+                  {/* Card 1: Post Details */}
+                  <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs space-y-4">
+                    <h2 className="text-sm font-bold text-slate-900">Post Details</h2>
+
+                    {/* Post Title */}
+                    <div>
+                      <label className="text-xs font-semibold text-slate-700 block mb-1.5">
+                        Post Title *
+                      </label>
+                      <Input
+                        placeholder="Enter an engaging title..."
+                        value={postForm.title}
+                        onChange={(e) => {
+                          const title = e.target.value;
+                          setPostForm((prev) => ({
+                            ...prev,
+                            title,
+                            slug: !editingBlogId
+                              ? title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+                              : prev.slug,
+                          }));
+                        }}
+                        className="bg-white border-slate-200 text-slate-900 text-xs h-10 rounded-xl"
+                      />
+                    </div>
+
+                    {/* Target Keyword & URL Slug */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-1.5">
+                          <Target className="w-3.5 h-3.5 text-slate-400" />
+                          <span>Target Keyword</span>
+                        </div>
+                        <Input
+                          placeholder="e.g. Generative AI"
+                          value={postForm.targetKeyword}
+                          onChange={(e) => setPostForm({ ...postForm, targetKeyword: e.target.value })}
+                          className="bg-white border-slate-200 text-slate-900 text-xs h-10 rounded-xl"
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-1.5">
+                          <span>URL Slug *</span>
+                          <Lock className="w-3 h-3 text-slate-400" />
+                        </div>
+                        <Input
+                          placeholder="the-future-of-ai"
+                          value={postForm.slug}
+                          onChange={(e) => setPostForm({ ...postForm, slug: e.target.value })}
+                          className="bg-slate-50 border-slate-200 text-slate-700 font-mono text-xs h-10 rounded-xl"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Meta Description */}
+                    <div>
+                      <div className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-1.5">
+                        <span>Meta Description *</span>
+                        <span className="text-[11px] text-slate-400 font-normal">
+                          {postForm.metaDescription.length}/160
+                        </span>
+                      </div>
+                      <Textarea
+                        rows={3}
+                        placeholder="A brief summary for SEO and post previews..."
+                        value={postForm.metaDescription}
+                        onChange={(e) => setPostForm({ ...postForm, metaDescription: e.target.value })}
+                        className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl resize-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Card 2: Cover Media */}
+                  <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs space-y-4">
+                    <h2 className="text-sm font-bold text-slate-900">Cover Media</h2>
+
+                    {/* Upload / Dropzone Box */}
+                    <div
+                      onClick={() => !isCompressingImage && coverImageInputRef.current?.click()}
+                      className="border-2 border-dashed border-slate-200 hover:border-indigo-400 hover:bg-slate-50/50 rounded-2xl p-6 transition-all cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-5 text-center sm:text-left group relative"
+                    >
+                      {isCompressingImage ? (
+                        <div className="flex flex-col items-center justify-center py-4 space-y-2">
+                          <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                          <p className="text-xs font-semibold text-slate-700">Optimizing image...</p>
+                        </div>
+                      ) : postForm.coverImage ? (
+                        <div className="relative w-full h-36 rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
+                          <img
+                            src={postForm.coverImage}
+                            alt="Cover Preview"
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-medium">
+                            Click to replace image
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="w-14 h-14 rounded-full bg-slate-100 group-hover:bg-indigo-50 flex items-center justify-center text-slate-400 group-hover:text-indigo-600 transition-colors flex-shrink-0">
+                            <Upload className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-sm text-slate-900">No file uploaded</p>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              Click or drag an image to upload. Max 10MB. JPG, PNG, WEBP.
+                            </p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    {postForm.coverImage && !isCompressingImage && (
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPostForm((prev) => ({ ...prev, coverImage: '' }));
+                          }}
+                          className="text-[11px] font-medium text-rose-500 hover:text-rose-700 underline"
+                        >
+                          Remove image
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Direct Image URL input */}
+                    <div>
+                      <label className="text-[11px] font-medium text-slate-500 block mb-1">
+                        Or provide Cover Image URL:
+                      </label>
+                      <Input
+                        placeholder="https://images.unsplash.com/..."
+                        value={postForm.coverImage}
+                        onChange={(e) => setPostForm({ ...postForm, coverImage: e.target.value })}
+                        className="bg-white border-slate-200 text-slate-700 text-xs h-8.5 rounded-lg"
+                      />
+                    </div>
+
+                    {/* Alt Text */}
+                    <div>
+                      <label className="text-xs font-semibold text-slate-700 block mb-1.5">
+                        Alt Text *
+                      </label>
+                      <Input
+                        placeholder="Describe the image for screen readers..."
+                        value={postForm.altText}
+                        onChange={(e) => setPostForm({ ...postForm, altText: e.target.value })}
+                        className="bg-white border-slate-200 text-slate-900 text-xs h-10 rounded-xl"
+                      />
+                      {postForm.altText.length < 20 && (
+                        <p className="text-[11px] text-rose-500 mt-1">
+                          Alt text must be descriptive and at least 20 characters.
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    createEmployeeMutation.mutate({
-                      name: employeeForm.name,
-                      email: employeeForm.email,
-                      password: employeeForm.password,
-                      role: employeeForm.role,
-                      department: employeeForm.department || `${employeeForm.role.toUpperCase()} Department`,
-                      notes: employeeForm.notes,
-                      status: 'active',
-                    });
-                  }}
-                  className="space-y-4 text-sm"
-                >
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-semibold text-slate-400 block mb-1">Full Name</label>
-                      <Input
-                        value={employeeForm.name}
-                        onChange={e => setEmployeeForm(s => ({ ...s, name: e.target.value }))}
-                        placeholder="e.g. Sarah Connor"
-                        className="bg-slate-950 border-slate-800 text-slate-100"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-slate-400 block mb-1">Work Email</label>
-                      <Input
-                        type="email"
-                        value={employeeForm.email}
-                        onChange={e => setEmployeeForm(s => ({ ...s, email: e.target.value }))}
-                        placeholder="e.g. sarah@eutian.com"
-                        className="bg-slate-950 border-slate-800 text-slate-100"
-                        required
-                      />
-                    </div>
-                  </div>
+                {/* Right Column: SEO Assistant & Taxonomy (Span 5) */}
+                <div className="lg:col-span-5 space-y-6">
+                  {/* Card 1: On-Page SEO Assistant */}
+                  <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs space-y-5">
+                    <h2 className="text-sm font-bold text-slate-900">On-Page SEO Assistant</h2>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="text-xs font-semibold text-slate-400 block mb-1">Login Password</label>
-                      <Input
-                        type="password"
-                        value={employeeForm.password}
-                        onChange={e => setEmployeeForm(s => ({ ...s, password: e.target.value }))}
-                        placeholder="••••••••"
-                        className="bg-slate-950 border-slate-800 text-slate-100"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-slate-400 block mb-1">Role Permission</label>
-                      <Select
-                        value={employeeForm.role}
-                        onValueChange={(v: EmployeeRole) => setEmployeeForm(s => ({ ...s, role: v }))}
-                      >
-                        <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-100">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
-                          <SelectItem value="sales">💼 Sales Executive</SelectItem>
-                          <SelectItem value="marketing">📢 Marketing Lead</SelectItem>
-                          <SelectItem value="intern">🎓 Junior Intern</SelectItem>
-                          <SelectItem value="developer">🛠️ Developer</SelectItem>
-                          <SelectItem value="admin">👑 Super Admin</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-slate-400 block mb-1">Department</label>
-                      <Input
-                        value={employeeForm.department}
-                        onChange={e => setEmployeeForm(s => ({ ...s, department: e.target.value }))}
-                        placeholder="e.g. Business Development"
-                        className="bg-slate-950 border-slate-800 text-slate-100"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-slate-400 block mb-1">Notes / Instructions</label>
-                    <Input
-                      value={employeeForm.notes}
-                      onChange={e => setEmployeeForm(s => ({ ...s, notes: e.target.value }))}
-                      placeholder="e.g. Responsible for high-ticket client onboarding"
-                      className="bg-slate-950 border-slate-800 text-slate-100"
-                    />
-                  </div>
-
-                  <div className="pt-2 flex justify-end">
-                    <Button type="submit" disabled={createEmployeeMutation.isPending} className="bg-purple-600 hover:bg-purple-500 text-white font-medium">
-                      {createEmployeeMutation.isPending ? 'Creating Account...' : 'Create Employee Account'}
-                    </Button>
-                  </div>
-                </form>
-              </Card>
-            )}
-
-            {/* Employees Grid */}
-            {loadingEmployees ? (
-              <div className="py-12 text-center text-slate-400">Loading team members...</div>
-            ) : !employees || employees.length === 0 ? (
-              <Card className="bg-slate-900/60 border-slate-800 py-16 text-center text-slate-400 rounded-2xl">
-                <UserCheck className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p className="text-base font-semibold text-slate-300">No Employees Found</p>
-                <p className="text-xs text-slate-500 mt-1 mb-4">Seed sample accounts for Sales, Marketing, Intern, & Dev roles with 1 click</p>
-                <Button onClick={handleSeedEmployees} disabled={isSeedingEmployees} className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs gap-2">
-                  <Sprout className="w-4 h-4" />
-                  Seed Sample Team Accounts
-                </Button>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {employees.map((emp) => (
-                  <Card key={emp.id} className="bg-slate-900/70 border-slate-800/80 p-5 rounded-2xl flex flex-col justify-between shadow-xl space-y-4">
-                    <div className="space-y-3">
-                      <div className="flex items-start justify-between">
-                        <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-lg font-bold text-slate-200">
-                          {emp.name.charAt(0)}
-                        </div>
-                        <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border ${
-                          emp.role === 'sales' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20' :
-                          emp.role === 'marketing' ? 'bg-purple-500/10 text-purple-300 border-purple-500/20' :
-                          emp.role === 'intern' ? 'bg-amber-500/10 text-amber-300 border-amber-500/20' :
-                          emp.role === 'developer' ? 'bg-cyan-500/10 text-cyan-300 border-cyan-500/20' :
-                          'bg-rose-500/10 text-rose-300 border-rose-500/20'
-                        }`}>
-                          {emp.role.toUpperCase()}
+                    {/* Circular Score Meter */}
+                    <div className="flex items-center gap-4">
+                      <div className="relative w-16 h-16 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-16 h-16 -rotate-90" viewBox="0 0 36 36">
+                          <path
+                            className="text-slate-100"
+                            strokeWidth="3.5"
+                            stroke="currentColor"
+                            fill="none"
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          />
+                          <path
+                            className={
+                              seoChecklist.score >= 80
+                                ? 'text-emerald-500'
+                                : seoChecklist.score >= 50
+                                ? 'text-amber-500'
+                                : 'text-rose-500'
+                            }
+                            strokeDasharray={`${seoChecklist.score}, 100`}
+                            strokeWidth="3.5"
+                            strokeLinecap="round"
+                            stroke="currentColor"
+                            fill="none"
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          />
+                        </svg>
+                        <span className="absolute text-lg font-bold text-slate-900">
+                          {seoChecklist.score}
                         </span>
                       </div>
 
                       <div>
-                        <h3 className="font-bold text-white text-base">{emp.name}</h3>
-                        <p className="text-xs text-indigo-400">{emp.email}</p>
-                        <p className="text-[11px] text-slate-400 mt-1">{emp.department}</p>
-                      </div>
-
-                      {emp.notes && (
-                        <p className="text-xs text-slate-400 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                          {emp.notes}
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          Overall Score
                         </p>
-                      )}
-                    </div>
-
-                    <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
-                      <span className={`flex items-center gap-1.5 font-medium ${emp.status === 'active' ? 'text-emerald-400' : 'text-slate-500'}`}>
-                        <span className={`w-2 h-2 rounded-full ${emp.status === 'active' ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`}></span>
-                        {emp.status === 'active' ? 'Active' : 'Inactive'}
-                      </span>
-
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 text-[11px] bg-slate-950 border-slate-800 hover:bg-slate-800 text-slate-300"
-                          onClick={() => {
-                            const newStatus = emp.status === 'active' ? 'inactive' : 'active';
-                            updateEmployeeMutation.mutate({ id: emp.id!, status: newStatus });
-                          }}
+                        <p
+                          className={`text-sm font-bold ${
+                            seoChecklist.score >= 80
+                              ? 'text-emerald-600'
+                              : seoChecklist.score >= 50
+                              ? 'text-amber-600'
+                              : 'text-rose-600'
+                          }`}
                         >
-                          Toggle Status
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          className="h-7 text-[11px] bg-rose-950/60 border border-rose-800/40 text-rose-300 hover:bg-rose-900"
-                          onClick={() => {
-                            if (confirm(`Remove employee ${emp.name}?`)) {
-                              deleteEmployeeMutation.mutate(emp.id!);
-                            }
-                          }}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
+                          {seoChecklist.status}
+                        </p>
                       </div>
                     </div>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
-        {/* LEADS TAB */}
-        {activeTab === 'leads' && (
-          <Card className="bg-slate-900/60 border-slate-800 p-6 rounded-2xl shadow-2xl backdrop-blur-md">
-            <div className="flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center mb-6">
-              <div className="flex flex-col sm:flex-row gap-3 flex-1">
-                <div className="relative flex-1">
-                  <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-500" />
-                  <Input
-                    placeholder="Search by name, email, phone or message..."
-                    value={leadSearch}
-                    onChange={e => setLeadSearch(e.target.value)}
-                    className="pl-10 bg-slate-950/60 border-slate-800 text-slate-100 placeholder:text-slate-500 focus:border-indigo-500 rounded-xl"
-                  />
-                </div>
+                    {/* Checklist */}
+                    <div className="space-y-2.5 pt-2 border-t border-slate-100">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        Checklist
+                      </p>
 
-                <Select onValueChange={v => setLeadStatusFilter(v as any)} defaultValue={leadStatusFilter}>
-                  <SelectTrigger className="w-[180px] bg-slate-950/60 border-slate-800 text-slate-200 rounded-xl">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="new">🆕 New</SelectItem>
-                    <SelectItem value="contacted">💬 Contacted</SelectItem>
-                    <SelectItem value="won">🎉 Won Deals</SelectItem>
-                    <SelectItem value="closed">❌ Closed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Button onClick={exportToCSV} variant="outline" className="bg-slate-950/80 border-slate-700 hover:bg-slate-800 text-slate-200 rounded-xl gap-2">
-                <Download className="w-4 h-4" />
-                Export CSV
-              </Button>
-            </div>
-
-            {loadingLeads && <div className="py-12 text-center text-slate-400">Loading inquiries...</div>}
-
-            {filteredLeads.length > 0 && (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead>
-                    <tr className="border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider bg-slate-950/40">
-                      <th className="py-3 px-4">Date</th>
-                      <th className="py-3 px-4">Client</th>
-                      <th className="py-3 px-4">Contact</th>
-                      <th className="py-3 px-4">Plan / Type</th>
-                      <th className="py-3 px-4">Region</th>
-                      <th className="py-3 px-4">Message</th>
-                      <th className="py-3 px-4">Status</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/60">
-                    {filteredLeads.map((l) => (
-                      <tr key={l.id} className="hover:bg-slate-800/30 transition-colors">
-                        <td className="py-4 px-4 whitespace-nowrap text-xs text-slate-400">
-                          {new Date(l.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </td>
-                        <td className="py-4 px-4 font-semibold text-slate-100">
-                          {l.name}
-                          {l.dealValue && (
-                            <div className="text-xs text-emerald-400 font-mono mt-0.5">
-                              {l.currency === 'USD' ? '$' : '₹'}{l.dealValue.toLocaleString()}
-                            </div>
+                      <div className="space-y-2 text-xs">
+                        <div className="flex items-center gap-2">
+                          {seoChecklist.hasKwInTitle ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                          ) : (
+                            <XCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
                           )}
-                        </td>
-                        <td className="py-4 px-4 space-y-1">
-                          <a href={`mailto:${l.email}`} className="text-indigo-400 hover:underline block text-xs">
-                            {l.email}
-                          </a>
-                          {l.phone && <div className="text-xs text-slate-400">{l.phone}</div>}
-                        </td>
-                        <td className="py-4 px-4 space-y-1">
-                          <span className="inline-block px-2.5 py-0.5 text-xs font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 rounded-full">
-                            {l.plan || 'Custom'}
+                          <span className={seoChecklist.hasKwInTitle ? 'text-slate-700' : 'text-slate-500'}>
+                            Target Keyword in Title
                           </span>
-                        </td>
-                        <td className="py-4 px-4 text-xs font-medium text-slate-300">
-                          {l.region === 'India' ? '🇮🇳 India' : '🌐 Global'}
-                        </td>
-                        <td className="py-4 px-4 max-w-[280px]">
-                          <p className="text-xs text-slate-300 line-clamp-2">{l.message}</p>
-                        </td>
-                        <td className="py-4 px-4">
-                          <Select onValueChange={(v) => updateStatus.mutate({ id: l.id, status: v as LeadItem['status'] })} defaultValue={l.status}>
-                            <SelectTrigger className={`w-[130px] h-8 text-xs font-medium rounded-lg border-0 ${
-                              l.status === 'new' ? 'bg-amber-500/20 text-amber-300' :
-                              l.status === 'contacted' ? 'bg-blue-500/20 text-blue-300' :
-                              l.status === 'won' ? 'bg-emerald-500/20 text-emerald-300' :
-                              'bg-slate-800 text-slate-400'
-                            }`}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 text-xs">
-                              <SelectItem value="new">🆕 New</SelectItem>
-                              <SelectItem value="contacted">💬 Contacted</SelectItem>
-                              <SelectItem value="won">🎉 Won</SelectItem>
-                              <SelectItem value="closed">❌ Closed</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </td>
-                        <td className="py-4 px-4 text-right whitespace-nowrap space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 bg-slate-950 border-slate-700 hover:bg-slate-800 text-slate-300"
-                            onClick={() => {
-                              setEditingLead(l);
-                              setLeadDetails({
-                                notes: l.notes || '',
-                                dealValue: l.dealValue?.toString() || '',
-                                currency: l.currency || (l.region === 'India' ? 'INR' : 'USD'),
-                                paymentStatus: l.paymentStatus || 'pending',
-                                followUpDate: l.followUpDate || '',
-                                source: l.source || ''
-                              });
-                            }}
-                          >
-                            <Edit3 className="w-3.5 h-3.5 mr-1" /> Edit
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Card>
-        )}
+                        </div>
 
-        {/* PROTOTYPES TAB */}
-        {activeTab === 'prototypes' && (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/60 border border-slate-800 p-5 rounded-2xl">
-              <div>
-                <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  <FolderKanban className="w-5 h-5 text-indigo-400" />
-                  Prototypes Showcase Gallery
-                </h2>
-              </div>
+                        <div className="flex items-center gap-2">
+                          {seoChecklist.metaLengthOk ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                          ) : (
+                            <XCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
+                          )}
+                          <span className={seoChecklist.metaLengthOk ? 'text-slate-700' : 'text-slate-500'}>
+                            Meta Description Length ({seoChecklist.metaLength} chars)
+                          </span>
+                        </div>
 
-              <div className="flex items-center gap-3">
-                <Button onClick={handleSeedPrototypes} disabled={isSeeding} variant="outline" className="bg-emerald-950/40 border-emerald-700/50 text-emerald-300 text-xs gap-1.5">
-                  <Sprout className="w-4 h-4 text-emerald-400" /> Seed Sample Prototypes
-                </Button>
-                <Button onClick={() => setShowAddProtoForm(!showAddProtoForm)} className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs gap-1.5">
-                  <Plus className="w-4 h-4" /> {showAddProtoForm ? 'Close' : 'Create Prototype'}
-                </Button>
-              </div>
-            </div>
-
-            {protos && protos.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {protos.map((p) => (
-                  <Card key={p.id} className="bg-slate-900/70 border-slate-800 p-5 rounded-2xl flex flex-col justify-between space-y-3">
-                    <div>
-                      <h3 className="font-bold text-white text-base">{p.title}</h3>
-                      <span className="text-xs text-indigo-400 bg-slate-950 px-2 py-0.5 rounded-full">{p.category}</span>
-                      <p className="text-xs text-slate-400 mt-2 line-clamp-3">{p.description}</p>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* REVIEWS TAB */}
-        {activeTab === 'reviews' && (
-          <Card className="bg-slate-900/60 border-slate-800 p-6 rounded-2xl">
-            <h2 className="text-lg font-bold text-white mb-4">Customer Reviews</h2>
-            {reviews && reviews.map(r => (
-              <div key={r.id} className="py-3 border-b border-slate-800 flex justify-between items-center">
-                <div>
-                  <span className="font-bold text-white">{r.name}</span> ({r.rating}/5)
-                  <p className="text-xs text-slate-400">{r.message}</p>
-                </div>
-                <Button variant="destructive" size="sm" onClick={() => deleteReview.mutate(r.id)}>Delete</Button>
-              </div>
-            ))}
-          </Card>
-        )}
-
-        {/* ================= TAB: BLOGS & ARTICLES MANAGEMENT ================= */}
-        {activeTab === 'blogs' && (
-          <div className="space-y-6">
-            {/* Top Toolbar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/70 border border-slate-800 p-5 rounded-2xl">
-              <div>
-                <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-emerald-400" />
-                  Blog & Insights Manager
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Publish articles, write drafts, edit existing posts, and control visibility.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <Button
-                  onClick={handleSeedBlogs}
-                  disabled={isSeedingBlogs}
-                  variant="outline"
-                  className="bg-emerald-950/40 border-emerald-700/50 text-emerald-300 hover:bg-emerald-900/50 text-xs gap-1.5"
-                  data-testid="btn-seed-blogs"
-                >
-                  <Sprout className="w-4 h-4 text-emerald-400" />
-                  {isSeedingBlogs ? 'Seeding...' : 'Seed Sample Articles'}
-                </Button>
-
-                <Button
-                  onClick={() => {
-                    setEditingBlogId(null);
-                    setBlogForm({
-                      title: '',
-                      slug: '',
-                      category: 'Web Development',
-                      coverImage: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
-                      readingTime: '5 min read',
-                      authorName: 'Balaji',
-                      authorRole: 'Founder & CEO',
-                      excerpt: '',
-                      content: '',
-                      tags: 'Tech, Web Dev, Engineering',
-                      status: 'published',
-                    });
-                    setShowAddBlogForm(true);
-                  }}
-                  className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs gap-1.5"
-                  data-testid="btn-new-blog"
-                >
-                  <Plus className="w-4 h-4" />
-                  Create New Article
-                </Button>
-              </div>
-            </div>
-
-            {/* Quick Metrics & Filter Bar */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-              <div className="md:col-span-4 flex items-center gap-2">
-                <div className="flex-1 bg-slate-900/60 border border-slate-800 p-3 rounded-xl text-center">
-                  <p className="text-[11px] text-slate-400 uppercase font-semibold">Total Posts</p>
-                  <p className="text-xl font-bold text-white mt-0.5">{metrics.blogCount}</p>
-                </div>
-                <div className="flex-1 bg-slate-900/60 border border-slate-800 p-3 rounded-xl text-center">
-                  <p className="text-[11px] text-emerald-400 uppercase font-semibold">Published</p>
-                  <p className="text-xl font-bold text-emerald-300 mt-0.5">{metrics.publishedBlogCount}</p>
-                </div>
-                <div className="flex-1 bg-slate-900/60 border border-slate-800 p-3 rounded-xl text-center">
-                  <p className="text-[11px] text-amber-400 uppercase font-semibold">Drafts</p>
-                  <p className="text-xl font-bold text-amber-300 mt-0.5">{metrics.draftBlogCount}</p>
-                </div>
-              </div>
-
-              <div className="md:col-span-5 relative">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <Input
-                  placeholder="Search articles by title, slug, excerpt, or tags..."
-                  value={blogSearch}
-                  onChange={(e) => setBlogSearch(e.target.value)}
-                  className="bg-slate-900/70 border-slate-800 pl-9 text-slate-200 text-xs h-11 rounded-xl"
-                  data-testid="input-admin-blog-search"
-                />
-              </div>
-
-              <div className="md:col-span-3">
-                <Select
-                  value={blogStatusFilter}
-                  onValueChange={(val: any) => setBlogStatusFilter(val)}
-                >
-                  <SelectTrigger className="bg-slate-900/70 border-slate-800 text-slate-200 text-xs h-11 rounded-xl">
-                    <SelectValue placeholder="Status: All" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
-                    <SelectItem value="all">All Articles ({metrics.blogCount})</SelectItem>
-                    <SelectItem value="published">Published Only ({metrics.publishedBlogCount})</SelectItem>
-                    <SelectItem value="draft">Drafts Only ({metrics.draftBlogCount})</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Create / Edit Article Modal */}
-            {showAddBlogForm && (
-              <Card className="bg-slate-900/90 border-slate-700/80 p-6 rounded-2xl shadow-2xl relative animate-in fade-in duration-300">
-                <div className="flex items-center justify-between pb-4 mb-6 border-b border-slate-800">
-                  <div className="flex items-center gap-2">
-                    <PenTool className="w-5 h-5 text-indigo-400" />
-                    <h3 className="font-bold text-lg text-white">
-                      {editingBlogId ? 'Edit Article' : 'Write New Article'}
-                    </h3>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setShowAddBlogForm(false);
-                      setEditingBlogId(null);
-                    }}
-                    className="text-slate-400 hover:text-white"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    saveBlogMutation.mutate(blogForm);
-                  }}
-                  className="space-y-5"
-                >
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block mb-1.5">
-                        Title *
-                      </label>
-                      <Input
-                        required
-                        placeholder="e.g. How Generative AI is Reshaping Web Development"
-                        value={blogForm.title}
-                        onChange={(e) => {
-                          const newTitle = e.target.value;
-                          setBlogForm((prev) => ({
-                            ...prev,
-                            title: newTitle,
-                            slug: !editingBlogId && (!prev.slug || prev.slug === prev.title.toLowerCase().replace(/[\s\W-]+/g, '-'))
-                              ? newTitle.toLowerCase().trim().replace(/[\s\W-]+/g, '-')
-                              : prev.slug,
-                          }));
-                        }}
-                        className="bg-slate-950 border-slate-800 text-white text-sm"
-                        data-testid="input-blog-form-title"
-                      />
+                        <div className="flex items-center gap-2">
+                          {seoChecklist.altLengthOk ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                          ) : (
+                            <XCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
+                          )}
+                          <span className={seoChecklist.altLengthOk ? 'text-slate-700' : 'text-slate-500'}>
+                            Alt Text length ({seoChecklist.altLength} chars)
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
-                    <div>
-                      <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block mb-1.5">
-                        Slug (URL Identifier) *
-                      </label>
-                      <Input
-                        required
-                        placeholder="e.g. how-generative-ai-reshaping-web-development"
-                        value={blogForm.slug}
-                        onChange={(e) => setBlogForm({ ...blogForm, slug: e.target.value })}
-                        className="bg-slate-950 border-slate-800 text-slate-300 text-sm font-mono"
-                        data-testid="input-blog-form-slug"
-                      />
+                    {/* Keyword Density */}
+                    <div className="pt-2 border-t border-slate-100">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-500 font-medium">Keyword Density</span>
+                        <span className="font-bold text-slate-800">{seoChecklist.keywordDensity}%</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-1">Aim for 1.5% - 2.5% for better ranking.</p>
+                    </div>
+
+                    {/* Google SERP Preview */}
+                    <div className="pt-3 border-t border-slate-100 space-y-2">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        Google SERP Preview
+                      </p>
+
+                      <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-1">
+                        <div className="flex items-center gap-1.5 text-[11px] text-slate-500 truncate">
+                          <span className="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-[9px]">
+                            E
+                          </span>
+                          <span className="truncate">https://eutian.com &gt; blog &gt; {postForm.slug || 'slug'}</span>
+                        </div>
+                        <h4 className="text-xs font-semibold text-blue-700 line-clamp-1 hover:underline cursor-pointer">
+                          {postForm.title || 'Post Title Preview'}
+                        </h4>
+                        <p className="text-[11px] text-slate-600 line-clamp-2 leading-relaxed">
+                          {postForm.metaDescription || 'Meta description preview will appear here once you start typing...'}
+                        </p>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                      <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block mb-1.5">
-                        Category
-                      </label>
-                      <Input
-                        placeholder="e.g. Web Development, AI, SaaS"
-                        value={blogForm.category}
-                        onChange={(e) => setBlogForm({ ...blogForm, category: e.target.value })}
-                        className="bg-slate-950 border-slate-800 text-white text-sm"
-                      />
-                    </div>
+                  {/* Card 2: Taxonomy & Settings */}
+                  <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs space-y-4">
+                    <h2 className="text-sm font-bold text-slate-900">Taxonomy & Settings</h2>
 
+                    {/* Category */}
                     <div>
-                      <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block mb-1.5">
-                        Reading Time
-                      </label>
-                      <Input
-                        placeholder="e.g. 5 min read"
-                        value={blogForm.readingTime}
-                        onChange={(e) => setBlogForm({ ...blogForm, readingTime: e.target.value })}
-                        className="bg-slate-950 border-slate-800 text-white text-sm"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block mb-1.5">
-                        Publication Status *
-                      </label>
+                      <label className="text-xs font-semibold text-slate-700 block mb-1.5">Category</label>
                       <Select
-                        value={blogForm.status}
-                        onValueChange={(val: 'published' | 'draft') => setBlogForm({ ...blogForm, status: val })}
+                        value={postForm.category}
+                        onValueChange={(val) => setPostForm({ ...postForm, category: val })}
                       >
-                        <SelectTrigger className="bg-slate-950 border-slate-800 text-white text-sm">
+                        <SelectTrigger className="bg-white border-slate-200 text-slate-900 text-xs h-10 rounded-xl">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="bg-slate-900 border-slate-800 text-white">
-                          <SelectItem value="published">🚀 Published (Live to Public)</SelectItem>
-                          <SelectItem value="draft">📝 Draft (Hidden, In Progress)</SelectItem>
+                        <SelectContent className="bg-white border-slate-200 text-slate-900 text-xs">
+                          <SelectItem value="Artificial Intelligence">Artificial Intelligence</SelectItem>
+                          <SelectItem value="Engineering">Engineering</SelectItem>
+                          <SelectItem value="Web Development">Web Development</SelectItem>
+                          <SelectItem value="Business">Business</SelectItem>
+                          <SelectItem value="Design">Design</SelectItem>
+                          <SelectItem value="Mobile">Mobile</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Author */}
                     <div>
-                      <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block mb-1.5">
-                        Cover Image URL
-                      </label>
+                      <label className="text-xs font-semibold text-slate-700 block mb-1.5">Author</label>
+                      <Select
+                        value={postForm.authorName}
+                        onValueChange={(val) => setPostForm({ ...postForm, authorName: val })}
+                      >
+                        <SelectTrigger className="bg-white border-slate-200 text-slate-900 text-xs h-10 rounded-xl">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border-slate-200 text-slate-900 text-xs">
+                          <SelectItem value="Balaji">Balaji (Founder & CEO)</SelectItem>
+                          <SelectItem value="Srikar">Srikar (Co-Founder & COO)</SelectItem>
+                          <SelectItem value="Eutian Team">Eutian Team</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Publish Date */}
+                    <div>
+                      <label className="text-xs font-semibold text-slate-700 block mb-1.5">Publish Date</label>
                       <Input
-                        placeholder="https://images.unsplash.com/photo-..."
-                        value={blogForm.coverImage}
-                        onChange={(e) => setBlogForm({ ...blogForm, coverImage: e.target.value })}
-                        className="bg-slate-950 border-slate-800 text-white text-sm"
+                        type="date"
+                        value={postForm.publishDate}
+                        onChange={(e) => setPostForm({ ...postForm, publishDate: e.target.value })}
+                        className="bg-white border-slate-200 text-slate-900 text-xs h-10 rounded-xl"
                       />
-                      {blogForm.coverImage && (
-                        <div className="mt-2 h-24 w-full rounded-xl overflow-hidden border border-slate-800 bg-black/40">
-                          <img
-                            src={blogForm.coverImage}
-                            alt="Cover preview"
-                            className="w-full h-full object-cover"
-                            onError={(e) => ((e.target as HTMLElement).style.display = 'none')}
-                          />
-                        </div>
-                      )}
                     </div>
 
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block mb-1.5">
-                          Author Name & Role
-                        </label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <Input
-                            placeholder="Author Name (e.g. Balaji)"
-                            value={blogForm.authorName}
-                            onChange={(e) => setBlogForm({ ...blogForm, authorName: e.target.value })}
-                            className="bg-slate-950 border-slate-800 text-white text-xs"
+                    {/* Tags */}
+                    <div>
+                      <label className="text-xs font-semibold text-slate-700 block mb-1.5">Tags</label>
+                      <Input
+                        placeholder="Add a tag and press Enter..."
+                        value={postForm.tags}
+                        onChange={(e) => setPostForm({ ...postForm, tags: e.target.value })}
+                        className="bg-white border-slate-200 text-slate-900 text-xs h-10 rounded-xl"
+                      />
+                    </div>
+
+                    {/* Canonical URL */}
+                    <div>
+                      <label className="text-xs font-semibold text-slate-700 block mb-1.5">Canonical URL</label>
+                      <Input
+                        placeholder="Leave blank to default to post URL"
+                        value={postForm.canonicalUrl}
+                        onChange={(e) => setPostForm({ ...postForm, canonicalUrl: e.target.value })}
+                        className="bg-white border-slate-200 text-slate-900 text-xs h-10 rounded-xl"
+                      />
+                    </div>
+
+                    {/* Switches */}
+                    <div className="space-y-3 pt-2 border-t border-slate-100">
+                      {/* Featured Post */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-700">Featured Post</span>
+                        <button
+                          type="button"
+                          onClick={() => setPostForm({ ...postForm, isFeatured: !postForm.isFeatured })}
+                          className={`w-10 h-5.5 flex items-center rounded-full p-0.5 transition-colors ${
+                            postForm.isFeatured ? 'bg-indigo-600' : 'bg-slate-200'
+                          }`}
+                        >
+                          <div
+                            className={`bg-white w-4.5 h-4.5 rounded-full shadow-md transform transition-transform ${
+                              postForm.isFeatured ? 'translate-x-4.5' : 'translate-x-0'
+                            }`}
                           />
-                          <Input
-                            placeholder="Role (e.g. Founder & CEO)"
-                            value={blogForm.authorRole}
-                            onChange={(e) => setBlogForm({ ...blogForm, authorRole: e.target.value })}
-                            className="bg-slate-950 border-slate-800 text-white text-xs"
-                          />
-                        </div>
+                        </button>
                       </div>
 
-                      <div>
-                        <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block mb-1.5">
-                          Tags (comma-separated)
-                        </label>
-                        <Input
-                          placeholder="AI, Full-Stack, Next.js, Architecture"
-                          value={blogForm.tags}
-                          onChange={(e) => setBlogForm({ ...blogForm, tags: e.target.value })}
-                          className="bg-slate-950 border-slate-800 text-white text-xs"
-                        />
+                      {/* Do Not Index */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-700">Do Not Index (noindex)</span>
+                        <button
+                          type="button"
+                          onClick={() => setPostForm({ ...postForm, isNoIndex: !postForm.isNoIndex })}
+                          className={`w-10 h-5.5 flex items-center rounded-full p-0.5 transition-colors ${
+                            postForm.isNoIndex ? 'bg-indigo-600' : 'bg-slate-200'
+                          }`}
+                        >
+                          <div
+                            className={`bg-white w-4.5 h-4.5 rounded-full shadow-md transform transition-transform ${
+                              postForm.isNoIndex ? 'translate-x-4.5' : 'translate-x-0'
+                            }`}
+                          />
+                        </button>
+                      </div>
+
+                      {/* Save as Draft */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-700">Save as Draft</span>
+                        <button
+                          type="button"
+                          onClick={() => setPostForm({ ...postForm, isDraft: !postForm.isDraft })}
+                          className={`w-10 h-5.5 flex items-center rounded-full p-0.5 transition-colors ${
+                            postForm.isDraft ? 'bg-indigo-600' : 'bg-slate-200'
+                          }`}
+                        >
+                          <div
+                            className={`bg-white w-4.5 h-4.5 rounded-full shadow-md transform transition-transform ${
+                              postForm.isDraft ? 'translate-x-4.5' : 'translate-x-0'
+                            }`}
+                          />
+                        </button>
                       </div>
                     </div>
                   </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block mb-1.5">
-                      Excerpt / Summary *
-                    </label>
-                    <Textarea
-                      required
-                      rows={2}
-                      placeholder="A short, catchy summary that appears on blog cards and search results..."
-                      value={blogForm.excerpt}
-                      onChange={(e) => setBlogForm({ ...blogForm, excerpt: e.target.value })}
-                      className="bg-slate-950 border-slate-800 text-white text-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                        Full Article Content (Markdown supported) *
-                      </label>
-                      <span className="text-[11px] text-slate-500">
-                        Supports # H1, ## H2, ### H3, ```code```, &gt; quote, - bullet list
-                      </span>
-                    </div>
-                    <Textarea
-                      required
-                      rows={12}
-                      placeholder="Write your article body here in markdown...&#10;&#10;## Introduction&#10;Explain the problem...&#10;&#10;```typescript&#10;const code = 'example';&#10;```"
-                      value={blogForm.content}
-                      onChange={(e) => setBlogForm({ ...blogForm, content: e.target.value })}
-                      className="bg-slate-950 border-slate-800 text-white text-sm font-mono"
-                      data-testid="textarea-blog-form-content"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => {
-                        setShowAddBlogForm(false);
-                        setEditingBlogId(null);
-                      }}
-                      className="text-slate-400 hover:text-white text-xs"
-                    >
-                      Cancel
-                    </Button>
-
-                    <Button
-                      type="submit"
-                      disabled={saveBlogMutation.isPending}
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-6"
-                      data-testid="btn-submit-blog"
-                    >
-                      {saveBlogMutation.isPending ? 'Saving...' : editingBlogId ? 'Update Article' : blogForm.status === 'published' ? 'Publish Article 🚀' : 'Save as Draft 📝'}
-                    </Button>
-                  </div>
-                </form>
-              </Card>
+                </div>
+              </div>
             )}
 
-            {/* Articles List / Grid */}
-            {loadingBlogs ? (
-              <div className="text-center py-16">
-                <div className="w-8 h-8 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mx-auto mb-3" />
-                <p className="text-slate-400 text-xs">Loading articles...</p>
+            {/* TAB CONTENT: WRITE POST */}
+            {createPostEditorTab === 'write' && (
+              <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div>
+                    <h3 className="font-bold text-sm text-slate-900">Article Content (Markdown Supported)</h3>
+                    <p className="text-xs text-slate-500">
+                      Write your post using standard Markdown (# H1, ## H2, ```code```, bullet lists, blockquotes).
+                    </p>
+                  </div>
+                  <div className="text-xs text-slate-400 font-mono">
+                    {postForm.content.split(/\s+/).filter(Boolean).length} words
+                  </div>
+                </div>
+
+                <Textarea
+                  rows={20}
+                  placeholder={`# ${postForm.title || 'Your Engaging Title'}&#10;&#10;Write the introduction here...&#10;&#10;## Key Architecture Concepts&#10;Explain the architectural foundation...&#10;&#10;\`\`\`typescript&#10;const example = 'Next.js 14';&#10;\`\`\``}
+                  value={postForm.content}
+                  onChange={(e) => setPostForm({ ...postForm, content: e.target.value })}
+                  className="bg-white border-slate-200 text-slate-900 text-xs font-mono rounded-xl leading-relaxed resize-y"
+                />
               </div>
-            ) : filteredBlogs.length === 0 ? (
-              <Card className="bg-slate-900/60 border-slate-800 py-16 text-center text-slate-400 rounded-2xl">
-                <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30 text-emerald-400" />
-                <p className="text-base font-semibold text-slate-300">No Articles Found</p>
-                <p className="text-xs text-slate-500 mt-1 mb-4">
-                  {blogSearch ? `No posts matched "${blogSearch}"` : 'Get started by creating an article or seeding initial posts.'}
-                </p>
-                <div className="flex items-center justify-center gap-3">
+            )}
+
+            {/* TAB CONTENT: SOCIAL MEDIA */}
+            {createPostEditorTab === 'social' && (
+              <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs space-y-5 max-w-3xl">
+                <h3 className="font-bold text-sm text-slate-900">Social Media & OpenGraph Preview</h3>
+                <div className="space-y-4 text-xs">
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">OG Title</label>
+                    <Input
+                      placeholder={postForm.title || 'Enter social share title'}
+                      value={postForm.ogTitle}
+                      onChange={(e) => setPostForm({ ...postForm, ogTitle: e.target.value })}
+                      className="bg-white border-slate-200"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">OG Description</label>
+                    <Textarea
+                      rows={2}
+                      placeholder={postForm.metaDescription || 'Enter social preview description'}
+                      value={postForm.ogDescription}
+                      onChange={(e) => setPostForm({ ...postForm, ogDescription: e.target.value })}
+                      className="bg-white border-slate-200"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB CONTENT: I18N */}
+            {createPostEditorTab === 'i18n' && (
+              <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs space-y-4 max-w-xl">
+                <h3 className="font-bold text-sm text-slate-900">Internationalization</h3>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Locale Language</label>
+                  <Select value={postForm.locale} onValueChange={(val) => setPostForm({ ...postForm, locale: val })}>
+                    <SelectTrigger className="bg-white border-slate-200 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200 text-xs">
+                      <SelectItem value="en">English (en-US)</SelectItem>
+                      <SelectItem value="es">Spanish (es-ES)</SelectItem>
+                      <SelectItem value="hi">Hindi (hi-IN)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
+            {/* ================= FLOATING ACTION PILL (Matching Reference 1:1) ================= */}
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white border border-slate-200/90 shadow-2xl rounded-full px-5 py-2 flex items-center gap-3">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setPostsSubTab('all')}
+                className="text-slate-600 hover:text-slate-900 text-xs font-semibold h-8.5 px-4 rounded-full"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                disabled={saveBlogMutation.isPending || !postForm.title}
+                onClick={() => saveBlogMutation.mutate(postForm)}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold h-8.5 px-5 rounded-full shadow-md transition-all"
+              >
+                {saveBlogMutation.isPending
+                  ? 'Saving...'
+                  : editingBlogId
+                  ? 'Save Changes'
+                  : postForm.isDraft
+                  ? 'Save Draft'
+                  : 'Save Post'}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ================= POSTS: ALL POSTS TABLE VIEW ================= */}
+        {activeTab === 'posts' && postsSubTab === 'all' && (
+          <div className="space-y-6">
+            {/* Top Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Posts</h1>
+              </div>
+
+              <div className="flex items-center gap-2.5 flex-wrap">
+                {blogs.length === 0 && (
                   <Button
                     onClick={handleSeedBlogs}
                     disabled={isSeedingBlogs}
                     variant="outline"
-                    className="bg-emerald-950/40 border-emerald-700/50 text-emerald-300 text-xs gap-1.5"
+                    className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold px-3.5 py-2 rounded-xl shadow-xs gap-1.5 h-9"
                   >
-                    <Sprout className="w-4 h-4 text-emerald-400" />
-                    Seed Sample Articles
+                    <Sprout className="w-3.5 h-3.5 text-emerald-600" />
+                    {isSeedingBlogs ? 'Seeding...' : 'Seed Sample Articles'}
                   </Button>
-                  <Button
-                    onClick={() => {
-                      setEditingBlogId(null);
-                      setShowAddBlogForm(true);
-                    }}
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs gap-1.5"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Write Article
+                )}
+
+                <Button
+                  onClick={handleImportJSONClick}
+                  variant="outline"
+                  className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold px-4 py-2 rounded-xl shadow-xs gap-1.5 h-9"
+                >
+                  <Upload className="w-3.5 h-3.5 text-slate-500" />
+                  Import JSON
+                </Button>
+
+                <Button
+                  onClick={handleExportJSON}
+                  variant="outline"
+                  className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold px-4 py-2 rounded-xl shadow-xs gap-1.5 h-9"
+                >
+                  <Download className="w-3.5 h-3.5 text-slate-500" />
+                  Export JSON
+                </Button>
+
+                <Button
+                  onClick={handleStartCreate}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-sm gap-1.5 h-9"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  + New Post
+                </Button>
+              </div>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="relative w-full sm:w-80">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Input
+                  placeholder="Search posts..."
+                  value={blogSearch}
+                  onChange={(e) => setBlogSearch(e.target.value)}
+                  className="bg-white border-slate-200 pl-8.5 text-slate-900 text-xs h-9 rounded-xl"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Select value={blogStatusFilter} onValueChange={(val: any) => setBlogStatusFilter(val)}>
+                  <SelectTrigger className="bg-white border-slate-200 text-slate-700 text-xs h-9 rounded-xl w-36">
+                    <SelectValue placeholder="All Status" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200 text-slate-800 text-xs">
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="published">Published</SelectItem>
+                    <SelectItem value="draft">Draft</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Posts Table */}
+            <div className="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden">
+              {loadingBlogs ? (
+                <div className="py-16 text-center text-slate-400 text-xs">
+                  <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                  Loading posts...
+                </div>
+              ) : filteredBlogs.length === 0 ? (
+                <div className="py-16 text-center text-slate-400 text-xs">
+                  <FileText className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+                  <p className="font-semibold text-slate-600 text-sm">No posts found</p>
+                  <p className="text-slate-400 mt-1">Create your first post or seed initial samples.</p>
+                  <Button onClick={handleSeedBlogs} disabled={isSeedingBlogs} variant="outline" className="mt-4 text-xs font-semibold h-8 rounded-lg">
+                    Seed Sample Posts
                   </Button>
                 </div>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredBlogs.map((post) => (
-                  <Card
-                    key={post.id}
-                    className="bg-slate-900/70 border-slate-800 p-5 rounded-2xl flex flex-col justify-between shadow-xl space-y-4 relative group hover:border-slate-700 transition-colors"
-                    data-testid={`admin-blog-card-${post.slug}`}
-                  >
-                    <div className="space-y-3">
-                      {/* Image Preview & Status Badge */}
-                      <div className="relative h-36 w-full rounded-xl overflow-hidden bg-slate-950 border border-slate-800">
-                        {post.coverImage ? (
-                          <img
-                            src={post.coverImage}
-                            alt={post.title}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-slate-900 text-slate-600">
-                            <BookOpen className="w-8 h-8" />
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-100 text-slate-500 text-xs font-medium">
+                        <th className="py-3.5 px-6 font-semibold">Title</th>
+                        <th className="py-3.5 px-6 font-semibold">Status</th>
+                        <th className="py-3.5 px-6 font-semibold">Category</th>
+                        <th className="py-3.5 px-6 font-semibold">Date</th>
+                        <th className="py-3.5 px-6 font-semibold text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs">
+                      {filteredBlogs.map((post) => {
+                        const dateFormatted = post.createdAt
+                          ? new Date(post.createdAt).toISOString().split('T')[0]
+                          : '2026-09-08';
+
+                        return (
+                          <tr key={post.id} className="hover:bg-slate-50/70 transition-colors group">
+                            <td className="py-4 px-6 max-w-md">
+                              <div
+                                onClick={() => handleStartEdit(post)}
+                                className="font-semibold text-slate-900 hover:text-indigo-600 transition-colors cursor-pointer line-clamp-1 text-sm"
+                              >
+                                {post.title}
+                              </div>
+                              <p className="text-[11px] text-slate-400 font-mono mt-0.5 truncate">
+                                /blog/{post.slug}
+                              </p>
+                            </td>
+
+                            <td className="py-4 px-6 whitespace-nowrap">
+                              {post.status === 'published' ? (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-600 border border-emerald-200/60">
+                                  Published
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-600 border border-amber-200/60">
+                                  Draft
+                                </span>
+                              )}
+                            </td>
+
+                            <td className="py-4 px-6 whitespace-nowrap text-slate-600 font-normal">
+                              {post.category || 'Engineering'}
+                            </td>
+
+                            <td className="py-4 px-6 whitespace-nowrap text-slate-500 font-normal">
+                              {dateFormatted}
+                            </td>
+
+                            <td className="py-4 px-6 whitespace-nowrap text-right">
+                              <div className="flex items-center justify-end gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const fullUrl = `${window.location.origin}/blog/${post.slug}`;
+                                    navigator.clipboard.writeText(fullUrl);
+                                    showToast('Blog link copied to clipboard!');
+                                  }}
+                                  className="text-slate-400 hover:text-indigo-600 transition-colors flex items-center gap-1 font-medium"
+                                  title="Copy Link"
+                                >
+                                  <Copy className="w-3.5 h-3.5" />
+                                  <span className="hidden sm:inline">Copy Link</span>
+                                </button>
+
+                                <a
+                                  href={`/blog/${post.slug}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-slate-400 hover:text-slate-600 transition-colors"
+                                  title="View Live"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </a>
+
+                                <button
+                                  onClick={() => handleStartEdit(post)}
+                                  className="text-indigo-600 hover:text-indigo-800 font-medium transition-colors"
+                                >
+                                  Edit
+                                </button>
+
+                                <button
+                                  onClick={() => {
+                                    if (confirm(`Are you sure you want to delete "${post.title}"?`)) {
+                                      deleteBlogMutation.mutate(post.id!);
+                                    }
+                                  }}
+                                  className="text-rose-600 hover:text-rose-800 font-medium transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ================= TAB: DASHBOARD ================= */}
+        {activeTab === 'dashboard' && (
+          <div className="space-y-6">
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Dashboard Overview</h1>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-xs">
+                <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase">
+                  <span>Total Inquiries</span>
+                  <Mail className="w-4 h-4 text-indigo-500" />
+                </div>
+                <p className="text-2xl font-bold text-slate-900 mt-2">{metrics.total}</p>
+                <p className="text-xs text-indigo-600 mt-1 font-medium">{metrics.new} new</p>
+              </div>
+
+              <div className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-xs">
+                <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase">
+                  <span>Total Posts</span>
+                  <FileText className="w-4 h-4 text-emerald-500" />
+                </div>
+                <p className="text-2xl font-bold text-slate-900 mt-2">{metrics.postCount}</p>
+                <p className="text-xs text-emerald-600 mt-1 font-medium">{metrics.publishedCount} published live</p>
+              </div>
+
+              <div className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-xs">
+                <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase">
+                  <span>Team Staff</span>
+                  <UserCheck className="w-4 h-4 text-purple-500" />
+                </div>
+                <p className="text-2xl font-bold text-slate-900 mt-2">{metrics.empCount}</p>
+                <p className="text-xs text-slate-500 mt-1">Sales, Marketing & Devs</p>
+              </div>
+
+              <div className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-xs">
+                <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase">
+                  <span>Prototypes</span>
+                  <FolderKanban className="w-4 h-4 text-amber-500" />
+                </div>
+                <p className="text-2xl font-bold text-slate-900 mt-2">{metrics.protoCount}</p>
+                <p className="text-xs text-slate-500 mt-1">Active gallery</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================= TAB: INQUIRIES ================= */}
+        {activeTab === 'inquiries' && (
+          <div className="space-y-6">
+            {/* Header & Controls */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Inquiries</h1>
+                  <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                    {leadsData.length} Total
+                  </span>
+                  {leadsData.some((l) => l.status === 'new') && (
+                    <span className="px-2 py-0.5 text-[11px] font-semibold rounded-full bg-blue-50 text-blue-700 border border-blue-200 animate-pulse">
+                      {leadsData.filter((l) => l.status === 'new').length} New
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Click on any client or message to view complete inquiry details and follow up.
+                </p>
+              </div>
+
+              {/* Filters & Search */}
+              <div className="flex flex-wrap items-center gap-2.5">
+                <div className="relative">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Input
+                    placeholder="Search by name, email, message..."
+                    value={leadSearch}
+                    onChange={(e) => setLeadSearch(e.target.value)}
+                    className="pl-9 pr-7 h-9 w-60 sm:w-72 text-xs bg-white rounded-xl border-slate-200 shadow-2xs"
+                  />
+                  {leadSearch && (
+                    <button
+                      onClick={() => setLeadSearch('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                <select
+                  value={leadStatusFilter}
+                  onChange={(e) => setLeadStatusFilter(e.target.value as any)}
+                  className="h-9 text-xs bg-white border border-slate-200 rounded-xl px-3 font-medium text-slate-700 shadow-2xs focus:ring-1 focus:ring-indigo-500 outline-none"
+                >
+                  <option value="all">All Status ({leadsData.length})</option>
+                  <option value="new">New ({leadsData.filter((l) => l.status === 'new').length})</option>
+                  <option value="contacted">Contacted ({leadsData.filter((l) => l.status === 'contacted').length})</option>
+                  <option value="won">Won Deal ({leadsData.filter((l) => l.status === 'won').length})</option>
+                  <option value="closed">Closed ({leadsData.filter((l) => l.status === 'closed').length})</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Inquiries Table Card */}
+            <div className="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-slate-500 text-xs font-semibold bg-slate-50/50">
+                      <th className="py-3.5 px-6">Client & Inquiry</th>
+                      <th className="py-3.5 px-6">Contact</th>
+                      <th className="py-3.5 px-6">Status</th>
+                      <th className="py-3.5 px-6 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs">
+                    {filteredLeads.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="py-12 text-center text-slate-500">
+                          <div className="flex flex-col items-center justify-center space-y-2">
+                            <Mail className="w-8 h-8 text-slate-300" />
+                            <p className="font-medium text-slate-600">No inquiries found</p>
+                            <p className="text-xs text-slate-400">
+                              {leadSearch || leadStatusFilter !== 'all'
+                                ? 'Try adjusting your search query or filter'
+                                : 'Incoming client inquiries will appear here'}
+                            </p>
+                            {(leadSearch || leadStatusFilter !== 'all') && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setLeadSearch('');
+                                  setLeadStatusFilter('all');
+                                }}
+                                className="mt-2 text-xs h-7 rounded-lg"
+                              >
+                                Reset filters
+                              </Button>
+                            )}
                           </div>
-                        )}
-                        <div className="absolute top-2.5 left-2.5">
-                          <span
-                            className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold flex items-center gap-1 shadow-md ${
-                              post.status === 'published'
-                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 backdrop-blur-md'
-                                : 'bg-amber-500/20 text-amber-300 border border-amber-500/40 backdrop-blur-md'
-                            }`}
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredLeads.map((lead) => {
+                        const badge = getStatusBadge(lead.status);
+                        return (
+                          <tr
+                            key={lead.id}
+                            onClick={() => setSelectedLead(lead)}
+                            className="hover:bg-indigo-50/40 transition-colors cursor-pointer group"
+                            title="Click to view full inquiry details"
                           >
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                post.status === 'published' ? 'bg-emerald-400' : 'bg-amber-400'
-                              }`}
-                            />
-                            {post.status === 'published' ? 'Published' : 'Draft'}
-                          </span>
+                            <td className="py-4 px-6">
+                              <div className="flex items-start gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-700 font-bold flex items-center justify-center text-xs shrink-0 border border-indigo-100 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-2xs mt-0.5">
+                                  {lead.name ? lead.name.charAt(0).toUpperCase() : '?'}
+                                </div>
+                                <div className="min-w-0 max-w-md">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                                      {lead.name}
+                                    </span>
+                                    {lead.websiteType && (
+                                      <span className="text-[10px] px-1.5 py-0.2 rounded font-medium bg-slate-100 text-slate-600">
+                                        {lead.websiteType}
+                                      </span>
+                                    )}
+                                    {lead.plan && (
+                                      <span className="text-[10px] px-1.5 py-0.2 rounded font-medium bg-indigo-50 text-indigo-600 border border-indigo-100">
+                                        {lead.plan}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-[12px] text-slate-500 font-normal line-clamp-1 mt-0.5">
+                                    {lead.message}
+                                  </p>
+                                  <span className="text-[10px] text-indigo-500 font-medium opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-0.5 mt-0.5">
+                                    Click to view full details <ArrowUpRight className="w-2.5 h-2.5" />
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-4 px-6 text-slate-600" onClick={(e) => e.stopPropagation()}>
+                              <a
+                                href={`mailto:${lead.email}`}
+                                className="hover:text-indigo-600 hover:underline block font-medium"
+                                title="Send Email"
+                              >
+                                {lead.email}
+                              </a>
+                              {lead.phone && (
+                                <a
+                                  href={`tel:${lead.phone}`}
+                                  className="text-[11px] text-slate-400 hover:text-slate-600 block mt-0.5"
+                                  title="Call phone"
+                                >
+                                  {lead.phone}
+                                </a>
+                              )}
+                            </td>
+                            <td className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
+                              <select
+                                value={lead.status}
+                                onChange={(e) => updateLeadStatus.mutate({ id: lead.id, status: e.target.value as any })}
+                                className={`text-xs border rounded-lg px-2.5 py-1 font-medium transition-colors ${badge.bg}`}
+                              >
+                                <option value="new">New</option>
+                                <option value="contacted">Contacted</option>
+                                <option value="won">Won Deal</option>
+                                <option value="closed">Closed</option>
+                              </select>
+                            </td>
+                            <td className="py-4 px-6 text-right" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  onClick={() => setSelectedLead(lead)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+                                  title="View full inquiry details"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                  <span>View</span>
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteLead(lead.id)}
+                                  className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors"
+                                  title="Delete inquiry"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Inquiry Details Modal */}
+            <Dialog open={!!selectedLead} onOpenChange={(open) => !open && setSelectedLead(null)}>
+              <DialogContent className="max-w-2xl sm:max-w-3xl max-h-[90vh] overflow-y-auto p-0 rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                {selectedLead && (
+                  <div className="flex flex-col">
+                    {/* Header Banner */}
+                    <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-indigo-50/30">
+                      <div className="flex items-start justify-between gap-4 pr-8">
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white font-bold flex items-center justify-center text-lg shadow-md shadow-indigo-100 shrink-0">
+                            {selectedLead.name ? selectedLead.name.charAt(0).toUpperCase() : '?'}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2.5 flex-wrap">
+                              <DialogTitle className="text-xl font-bold text-slate-900 tracking-tight">
+                                {selectedLead.name}
+                              </DialogTitle>
+                              <span
+                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                                  getStatusBadge(selectedLead.status).bg
+                                }`}
+                              >
+                                <span
+                                  className={`w-1.5 h-1.5 rounded-full ${getStatusBadge(selectedLead.status).dot}`}
+                                />
+                                {getStatusBadge(selectedLead.status).label}
+                              </span>
+                            </div>
+                            <DialogDescription className="text-xs text-slate-400 mt-1 flex items-center gap-1.5 flex-wrap">
+                              <Clock className="w-3.5 h-3.5 text-slate-400" />
+                              <span>
+                                Received{' '}
+                                {new Date(selectedLead.createdAt).toLocaleString(undefined, {
+                                  dateStyle: 'medium',
+                                  timeStyle: 'short',
+                                })}
+                              </span>
+                              {selectedLead.source && (
+                                <span>
+                                  • Source:{' '}
+                                  <strong className="text-slate-600 font-medium">{selectedLead.source}</strong>
+                                </span>
+                              )}
+                            </DialogDescription>
+                          </div>
                         </div>
 
-                        <div className="absolute top-2.5 right-2.5">
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-black/60 text-slate-300 backdrop-blur-md">
-                            {post.category}
-                          </span>
+                        {/* Quick Status Dropdown */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium text-slate-500 hidden sm:inline">Status:</span>
+                          <select
+                            value={selectedLead.status}
+                            onChange={(e) =>
+                              updateLeadStatus.mutate({ id: selectedLead.id, status: e.target.value as any })
+                            }
+                            className="text-xs font-semibold bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-700 shadow-xs focus:ring-1 focus:ring-indigo-500 outline-none"
+                          >
+                            <option value="new">🆕 New</option>
+                            <option value="contacted">💬 Contacted</option>
+                            <option value="won">🎉 Won Deal</option>
+                            <option value="closed">❌ Closed</option>
+                          </select>
                         </div>
                       </div>
 
-                      {/* Title & Slug */}
-                      <div>
-                        <h3 className="font-bold text-white text-base line-clamp-2 hover:text-indigo-400 transition-colors">
-                          {post.title}
-                        </h3>
-                        <p className="text-[11px] text-slate-500 font-mono mt-0.5 truncate">
-                          /blog/{post.slug}
-                        </p>
-                      </div>
-
-                      {/* Excerpt */}
-                      <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
-                        {post.excerpt}
-                      </p>
-
-                      {/* Author & Read Time */}
-                      <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-800">
-                        <span>By {post.author?.name || 'Balaji'}</span>
-                        <span>{post.readingTime || '5 min read'}</span>
-                      </div>
-                    </div>
-
-                    {/* Actions Toolbar */}
-                    <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className={`h-7 text-[11px] px-2.5 rounded-lg ${
-                            post.status === 'published'
-                              ? 'bg-amber-950/40 border-amber-800/40 text-amber-300 hover:bg-amber-900/60'
-                              : 'bg-emerald-950/40 border-emerald-800/40 text-emerald-300 hover:bg-emerald-900/60'
-                          }`}
-                          onClick={() => {
-                            const newStatus = post.status === 'published' ? 'draft' : 'published';
-                            toggleBlogStatusMutation.mutate({ id: post.id!, status: newStatus });
-                          }}
-                          data-testid={`btn-toggle-status-${post.slug}`}
+                      {/* Quick Action Buttons */}
+                      <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-slate-200/60">
+                        <a
+                          href={`mailto:${selectedLead.email}?subject=${encodeURIComponent(
+                            'Regarding your inquiry at Eutian'
+                          )}`}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition-colors"
                         >
-                          {post.status === 'published' ? 'Unpublish (Draft)' : 'Publish Live'}
-                        </Button>
+                          <Mail className="w-3.5 h-3.5" />
+                          <span>Email Client</span>
+                          <ArrowUpRight className="w-3 h-3 opacity-70" />
+                        </a>
 
-                        {post.status === 'published' && (
+                        {selectedLead.phone && (
                           <a
-                            href={`/blog/${post.slug}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="h-7 px-2 flex items-center text-[11px] bg-slate-950 border border-slate-800 hover:bg-slate-800 text-slate-300 rounded-lg gap-1"
-                            title="View live article"
+                            href={`tel:${selectedLead.phone}`}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl shadow-xs transition-colors"
                           >
-                            <ExternalLink className="w-3 h-3" />
+                            <Phone className="w-3.5 h-3.5 text-slate-500" />
+                            <span>Call ({selectedLead.phone})</span>
                           </a>
                         )}
-                      </div>
 
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 text-[11px] px-2 bg-slate-950 border-slate-800 hover:bg-slate-800 text-slate-300 rounded-lg"
-                          onClick={() => {
-                            setEditingBlogId(post.id!);
-                            setBlogForm({
-                              title: post.title,
-                              slug: post.slug,
-                              category: post.category || 'Web Development',
-                              coverImage: post.coverImage || '',
-                              readingTime: post.readingTime || '5 min read',
-                              authorName: post.author?.name || 'Balaji',
-                              authorRole: post.author?.role || 'Founder & CEO',
-                              excerpt: post.excerpt || '',
-                              content: post.content || '',
-                              tags: Array.isArray(post.tags) ? post.tags.join(', ') : '',
-                              status: post.status || 'published',
-                            });
-                            setShowAddBlogForm(true);
-                            window.scrollTo({ top: 350, behavior: 'smooth' });
-                          }}
-                          data-testid={`btn-edit-blog-${post.slug}`}
-                        >
-                          <Edit3 className="w-3 h-3 mr-1" /> Edit
-                        </Button>
+                        {(selectedLead.whatsapp || selectedLead.phone) && (
+                          <a
+                            href={`https://wa.me/${(selectedLead.whatsapp || selectedLead.phone || '').replace(
+                              /[^0-9]/g,
+                              ''
+                            )}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl shadow-xs transition-colors"
+                          >
+                            <SiWhatsapp className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>WhatsApp</span>
+                            <ArrowUpRight className="w-3 h-3 opacity-70" />
+                          </a>
+                        )}
 
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          className="h-7 w-7 p-0 bg-rose-950/40 border border-rose-800/40 text-rose-400 hover:bg-rose-900 rounded-lg"
-                          onClick={() => {
-                            if (confirm(`Are you sure you want to delete "${post.title}"?`)) {
-                              deleteBlogMutation.mutate(post.id!);
-                            }
-                          }}
-                          data-testid={`btn-delete-blog-${post.slug}`}
+                        <button
+                          onClick={() => copyToClipboard(selectedLead.message, 'Inquiry Message')}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl shadow-xs transition-colors sm:ml-auto"
                         >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
+                          {copiedKey === 'Inquiry Message' ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5 text-slate-400" />
+                          )}
+                          <span>{copiedKey === 'Inquiry Message' ? 'Copied!' : 'Copy Inquiry'}</span>
+                        </button>
                       </div>
                     </div>
-                  </Card>
-                ))}
+
+                    {/* Modal Body */}
+                    <div className="p-6 space-y-6">
+                      {/* Grid Info */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Contact Details Card */}
+                        <div className="p-4 rounded-xl bg-slate-50/70 border border-slate-200/70 space-y-3">
+                          <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                            <Users className="w-3.5 h-3.5 text-indigo-500" />
+                            Contact Details
+                          </h3>
+
+                          <div className="space-y-2 text-xs">
+                            <div className="flex items-center justify-between py-1 border-b border-slate-200/50">
+                              <span className="text-slate-400">Email</span>
+                              <div className="flex items-center gap-1.5">
+                                <a
+                                  href={`mailto:${selectedLead.email}`}
+                                  className="font-semibold text-slate-900 hover:text-indigo-600 hover:underline"
+                                >
+                                  {selectedLead.email}
+                                </a>
+                                <button
+                                  onClick={() => copyToClipboard(selectedLead.email, 'Email')}
+                                  className="text-slate-400 hover:text-slate-600 p-0.5"
+                                  title="Copy Email"
+                                >
+                                  {copiedKey === 'Email' ? (
+                                    <Check className="w-3 h-3 text-emerald-600" />
+                                  ) : (
+                                    <Copy className="w-3 h-3" />
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between py-1 border-b border-slate-200/50">
+                              <span className="text-slate-400">Phone</span>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-semibold text-slate-900">
+                                  {selectedLead.phone || 'Not provided'}
+                                </span>
+                                {selectedLead.phone && (
+                                  <button
+                                    onClick={() => copyToClipboard(selectedLead.phone!, 'Phone')}
+                                    className="text-slate-400 hover:text-slate-600 p-0.5"
+                                    title="Copy Phone"
+                                  >
+                                    {copiedKey === 'Phone' ? (
+                                      <Check className="w-3 h-3 text-emerald-600" />
+                                    ) : (
+                                      <Copy className="w-3 h-3" />
+                                    )}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between py-1 border-b border-slate-200/50">
+                              <span className="text-slate-400">WhatsApp</span>
+                              <span className="font-semibold text-slate-900">
+                                {selectedLead.whatsapp || selectedLead.phone || 'Not provided'}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between py-1">
+                              <span className="text-slate-400">Region</span>
+                              <span className="font-semibold text-slate-900 flex items-center gap-1">
+                                <Globe className="w-3 h-3 text-slate-400" />
+                                {selectedLead.region || 'India'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Requirement / Project Overview Card */}
+                        <div className="p-4 rounded-xl bg-slate-50/70 border border-slate-200/70 space-y-3">
+                          <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                            <Briefcase className="w-3.5 h-3.5 text-indigo-500" />
+                            Inquiry Requirements
+                          </h3>
+
+                          <div className="space-y-2 text-xs">
+                            <div className="flex items-center justify-between py-1 border-b border-slate-200/50">
+                              <span className="text-slate-400">Website / Project Type</span>
+                              <span className="font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                                {selectedLead.websiteType || 'General Inquiry'}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between py-1 border-b border-slate-200/50">
+                              <span className="text-slate-400">Plan Selected</span>
+                              <span className="font-semibold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md">
+                                {selectedLead.plan || 'Custom / None'}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between py-1 border-b border-slate-200/50">
+                              <span className="text-slate-400">Acquisition Source</span>
+                              <span className="font-semibold text-slate-700">
+                                {selectedLead.source || 'Direct'}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between py-1">
+                              <span className="text-slate-400">Deal Value</span>
+                              <span className="font-semibold text-emerald-600 font-mono">
+                                {selectedLead.dealValue
+                                  ? `${selectedLead.currency === 'USD' ? '$' : '₹'}${selectedLead.dealValue.toLocaleString()}`
+                                  : 'Not set'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Full Message Section */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                            <MessageSquare className="w-3.5 h-3.5 text-indigo-500" />
+                            Full Client Message / Requirement
+                          </h3>
+                          <span className="text-[11px] text-slate-400">
+                            {selectedLead.message ? `${selectedLead.message.length} characters` : ''}
+                          </span>
+                        </div>
+                        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-800 text-sm leading-relaxed whitespace-pre-wrap font-sans select-text shadow-inner">
+                          {selectedLead.message || 'No message content provided.'}
+                        </div>
+                      </div>
+
+                      {/* CRM Management / Notes & Deal Tracking */}
+                      <div className="p-4.5 rounded-xl border border-slate-200 bg-white space-y-4 shadow-2xs">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                            <Tag className="w-3.5 h-3.5 text-indigo-600" />
+                            Deal Tracking & Admin Notes
+                          </h3>
+                          <span className="text-[11px] text-slate-400">Internal only</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                          <div>
+                            <label className="block text-slate-500 font-medium mb-1">
+                              Deal Value ({modalCurrency})
+                            </label>
+                            <div className="flex rounded-lg shadow-xs overflow-hidden border border-slate-200">
+                              <select
+                                value={modalCurrency}
+                                onChange={(e) => setModalCurrency(e.target.value as any)}
+                                className="bg-slate-100 text-slate-700 px-2 text-xs font-bold border-r border-slate-200 outline-none"
+                              >
+                                <option value="INR">₹ INR</option>
+                                <option value="USD">$ USD</option>
+                              </select>
+                              <input
+                                type="number"
+                                value={modalDealValue}
+                                onChange={(e) => setModalDealValue(e.target.value)}
+                                placeholder="e.g. 25000"
+                                className="w-full px-2.5 py-1.5 text-xs outline-none bg-white font-mono"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-slate-500 font-medium mb-1">Payment Status</label>
+                            <select
+                              value={modalPaymentStatus}
+                              onChange={(e) => setModalPaymentStatus(e.target.value as any)}
+                              className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 shadow-xs outline-none focus:ring-1 focus:ring-indigo-500"
+                            >
+                              <option value="pending">Pending</option>
+                              <option value="in-progress">In Progress</option>
+                              <option value="payment-pending">Payment Pending</option>
+                              <option value="completed">Completed</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-slate-500 font-medium mb-1">Follow-up Date</label>
+                            <input
+                              type="date"
+                              value={modalFollowUpDate}
+                              onChange={(e) => setModalFollowUpDate(e.target.value)}
+                              className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 shadow-xs outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-slate-500 text-xs font-medium mb-1">
+                            Admin Follow-up Notes
+                          </label>
+                          <Textarea
+                            rows={2}
+                            placeholder="Add notes about calls, client requirements, quotes sent..."
+                            value={modalNotes}
+                            onChange={(e) => setModalNotes(e.target.value)}
+                            className="text-xs bg-slate-50/50 border-slate-200 rounded-xl resize-none"
+                          />
+                        </div>
+
+                        <div className="flex justify-end">
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              updateLeadDetails.mutate({
+                                id: selectedLead.id,
+                                notes: modalNotes,
+                                dealValue: modalDealValue ? parseFloat(modalDealValue) : undefined,
+                                currency: modalCurrency,
+                                paymentStatus: modalPaymentStatus,
+                                followUpDate: modalFollowUpDate,
+                              });
+                            }}
+                            disabled={updateLeadDetails.isPending}
+                            className="h-8 px-4 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-xs"
+                          >
+                            {updateLeadDetails.isPending ? 'Saving...' : 'Save Notes & Tracking'}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Modal Footer */}
+                    <div className="p-4 px-6 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between rounded-b-2xl">
+                      <button
+                        onClick={() => handleDeleteLead(selectedLead.id)}
+                        className="inline-flex items-center gap-1.5 text-xs font-medium text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete Inquiry
+                      </button>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedLead(null)}
+                        className="h-8 px-4 text-xs font-medium rounded-xl border-slate-200 text-slate-700 hover:bg-slate-100"
+                      >
+                        Close
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
+          </div>
+        )}
+
+        {/* ================= TAB: EMPLOYEES ================= */}
+        {activeTab === 'employees' && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Employees</h1>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-600 border border-indigo-100">
+                    {employees.length} Total
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Manage team accounts, access roles, credentials, and departmental assignments.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => seedEmployeesMutation.mutate()}
+                  disabled={seedEmployeesMutation.isPending}
+                  className="text-xs bg-white border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl"
+                >
+                  {seedEmployeesMutation.isPending ? 'Seeding...' : 'Seed Defaults'}
+                </Button>
+
+                <Button
+                  size="sm"
+                  onClick={handleStartCreateEmployee}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-xs flex items-center gap-1.5"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  Add Employee
+                </Button>
+              </div>
+            </div>
+
+            {employees.length === 0 ? (
+              <div className="bg-white border border-slate-200/90 rounded-2xl p-12 text-center space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto">
+                  <Users className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">No employees found</h3>
+                  <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                    Create a new employee account or seed default sample team members.
+                  </p>
+                </div>
+                <div className="flex justify-center gap-3">
+                  <Button
+                    onClick={handleStartCreateEmployee}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-xl"
+                  >
+                    <UserPlus className="w-3.5 h-3.5 mr-1" /> Add Employee
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => seedEmployeesMutation.mutate()}
+                    className="text-xs rounded-xl bg-white"
+                  >
+                    Seed Samples
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {employees.map((emp) => {
+                  const roleColors: Record<string, string> = {
+                    admin: 'bg-indigo-50 text-indigo-700 border-indigo-200/70',
+                    developer: 'bg-sky-50 text-sky-700 border-sky-200/70',
+                    sales: 'bg-emerald-50 text-emerald-700 border-emerald-200/70',
+                    marketing: 'bg-purple-50 text-purple-700 border-purple-200/70',
+                    intern: 'bg-amber-50 text-amber-700 border-amber-200/70',
+                  };
+
+                  return (
+                    <div
+                      key={emp.id}
+                      className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-xs space-y-4 flex flex-col justify-between hover:shadow-md transition-shadow"
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-700 font-bold flex items-center justify-center text-sm">
+                            {emp.name.charAt(0).toUpperCase()}
+                          </div>
+                          <span
+                            className={`px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md border ${
+                              roleColors[emp.role] || 'bg-slate-100 text-slate-700 border-slate-200'
+                            }`}
+                          >
+                            {emp.role}
+                          </span>
+                        </div>
+
+                        <div>
+                          <h4 className="font-bold text-sm text-slate-900">{emp.name}</h4>
+                          <p className="text-xs text-slate-500 font-mono mt-0.5">{emp.email}</p>
+                        </div>
+
+                        {emp.department && (
+                          <div className="inline-block text-[11px] text-slate-600 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-lg">
+                            {emp.department}
+                          </div>
+                        )}
+
+                        {emp.notes && (
+                          <p className="text-xs text-slate-400 italic line-clamp-2">{emp.notes}</p>
+                        )}
+                      </div>
+
+                      <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                        <span
+                          className={`text-[11px] font-medium flex items-center gap-1.5 ${
+                            emp.status === 'active' ? 'text-emerald-600' : 'text-slate-400'
+                          }`}
+                        >
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              emp.status === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'
+                            }`}
+                          />
+                          {emp.status === 'active' ? 'Active' : 'Inactive'}
+                        </span>
+
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => handleStartEditEmployee(emp)}
+                            className="text-indigo-600 hover:text-indigo-800 text-xs font-medium transition-colors flex items-center gap-1"
+                          >
+                            <Edit3 className="w-3 h-3" />
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm(`Remove employee account for "${emp.name}"?`)) {
+                                deleteEmployeeMutation.mutate(emp.id!);
+                              }
+                            }}
+                            className="text-rose-600 hover:text-rose-800 text-xs font-medium transition-colors flex items-center gap-1"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
         )}
 
-        {/* TEMPLATES TAB */}
-        {activeTab === 'templates' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {Object.entries(emailTemplates).map(([k, t]) => (
-              <Card key={k} className="bg-slate-900/70 border-slate-800 p-5 rounded-2xl space-y-2">
-                <h3 className="font-bold text-white capitalize">{k} Template</h3>
-                <pre className="bg-slate-950 p-3 rounded-xl text-xs text-slate-300 whitespace-pre-wrap">{t.body}</pre>
-              </Card>
-            ))}
+        {/* ================= TAB: PROTOTYPES ================= */}
+        {activeTab === 'prototypes' && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Prototypes</h1>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-600 border border-indigo-100">
+                    {protos.length} Total
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Manage your portfolio showcases, tech stacks, and demo prototypes.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => seedPrototypesMutation.mutate()}
+                  disabled={seedPrototypesMutation.isPending}
+                  className="text-xs bg-white border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl"
+                >
+                  {seedPrototypesMutation.isPending ? 'Seeding...' : 'Seed Defaults'}
+                </Button>
+
+                <Button
+                  size="sm"
+                  onClick={handleStartCreatePrototype}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-xs flex items-center gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  New Prototype
+                </Button>
+              </div>
+            </div>
+
+            {protos.length === 0 ? (
+              <div className="bg-white border border-slate-200/90 rounded-2xl p-12 text-center space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto">
+                  <FolderKanban className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">No prototypes found</h3>
+                  <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                    Add your first prototype demo or seed the default samples to get started.
+                  </p>
+                </div>
+                <div className="flex justify-center gap-3">
+                  <Button
+                    onClick={handleStartCreatePrototype}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-xl"
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Add Prototype
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => seedPrototypesMutation.mutate()}
+                    className="text-xs rounded-xl bg-white"
+                  >
+                    Seed Samples
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {protos.map((proto) => {
+                  const mediaUrl = proto.media?.[0]?.url || (proto as any).image || (proto as any).images?.[0] || 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80';
+                  return (
+                    <div
+                      key={proto.id}
+                      className="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden flex flex-col group hover:shadow-md transition-shadow"
+                    >
+                      {/* Image header */}
+                      <div className="relative h-44 w-full bg-slate-100 overflow-hidden border-b border-slate-100">
+                        <img
+                          src={mediaUrl}
+                          alt={proto.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                        <span className="absolute top-3 left-3 text-[10px] font-bold uppercase tracking-wider text-indigo-700 bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-md shadow-xs">
+                          {proto.category}
+                        </span>
+                      </div>
+
+                      {/* Content */}
+                      <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                        <div className="space-y-2">
+                          <h4 className="font-bold text-slate-900 text-sm line-clamp-1">{proto.title}</h4>
+                          <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{proto.description}</p>
+
+                          {/* Tech stack */}
+                          {proto.techStack && proto.techStack.length > 0 && (
+                            <div className="flex flex-wrap gap-1 pt-1">
+                              {proto.techStack.slice(0, 4).map((tech, idx) => (
+                                <span
+                                  key={idx}
+                                  className="text-[10px] font-medium bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md"
+                                >
+                                  {tech}
+                                </span>
+                              ))}
+                              {proto.techStack.length > 4 && (
+                                <span className="text-[10px] font-medium bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded-md">
+                                  +{proto.techStack.length - 4}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                          <Link
+                            href="/prototypes"
+                            target="_blank"
+                            className="text-xs text-slate-500 hover:text-indigo-600 transition-colors flex items-center gap-1 font-medium"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            View
+                          </Link>
+
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => handleStartEditPrototype(proto)}
+                              className="text-xs text-indigo-600 hover:text-indigo-800 font-medium transition-colors flex items-center gap-1"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (confirm(`Delete prototype "${proto.title}"?`)) {
+                                  deletePrototypeMutation.mutate(proto.id);
+                                }
+                              }}
+                              className="text-xs text-rose-600 hover:text-rose-800 font-medium transition-colors flex items-center gap-1"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
-        {/* SETTINGS TAB */}
-        {activeTab === 'settings' && (
-          <Card className="bg-slate-900/60 border-slate-800 p-6 rounded-2xl space-y-4">
-            <h2 className="text-lg font-bold text-white">Offer Banner Settings</h2>
-            <Input value={bannerSettings.title} onChange={e => setBannerSettings({ ...bannerSettings, title: e.target.value })} className="bg-slate-950 border-slate-800 text-slate-100" />
-            <Input value={bannerSettings.discount} onChange={e => setBannerSettings({ ...bannerSettings, discount: e.target.value })} className="bg-slate-950 border-slate-800 text-slate-100" />
-          </Card>
+        {/* Prototype Modal Dialog */}
+        <Dialog open={prototypeModalOpen} onOpenChange={setPrototypeModalOpen}>
+          <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl p-6 text-slate-900 shadow-xl border border-slate-200">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold text-slate-900">
+                {editingPrototypeId ? 'Edit Prototype' : 'Add New Prototype'}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-500">
+                {editingPrototypeId
+                  ? 'Update prototype details, tech stack, and showcase images.'
+                  : 'Create a new prototype project to showcase in your portfolio.'}
+              </DialogDescription>
+            </DialogHeader>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!prototypeForm.title.trim()) return alert('Please enter a title');
+                if (!prototypeForm.description.trim()) return alert('Please enter a description');
+                savePrototypeMutation.mutate(prototypeForm);
+              }}
+              className="space-y-4 pt-2"
+            >
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Title *</label>
+                <Input
+                  placeholder="e.g. ApexSaaS — AI Analytics Dashboard"
+                  value={prototypeForm.title}
+                  onChange={(e) => setPrototypeForm({ ...prototypeForm, title: e.target.value })}
+                  required
+                  className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Category *</label>
+                  <Select
+                    value={prototypeForm.category}
+                    onValueChange={(val) => setPrototypeForm({ ...prototypeForm, category: val })}
+                  >
+                    <SelectTrigger className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200">
+                      <SelectItem value="SaaS">SaaS</SelectItem>
+                      <SelectItem value="E-Commerce">E-Commerce</SelectItem>
+                      <SelectItem value="Landing Page">Landing Page</SelectItem>
+                      <SelectItem value="AI/ML">AI/ML</SelectItem>
+                      <SelectItem value="Healthcare">Healthcare</SelectItem>
+                      <SelectItem value="Fintech">Fintech</SelectItem>
+                      <SelectItem value="Mobile App">Mobile App</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Tech Stack (comma-separated)</label>
+                  <Input
+                    placeholder="Next.js, React, Tailwind CSS"
+                    value={prototypeForm.techStack}
+                    onChange={(e) => setPrototypeForm({ ...prototypeForm, techStack: e.target.value })}
+                    className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Description *</label>
+                <Textarea
+                  rows={3}
+                  placeholder="Detailed description of the prototype, target audience, and architecture..."
+                  value={prototypeForm.description}
+                  onChange={(e) => setPrototypeForm({ ...prototypeForm, description: e.target.value })}
+                  required
+                  className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Cover Image</label>
+                <input
+                  type="file"
+                  ref={protoImageInputRef}
+                  onChange={handleProtoImageUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <div
+                  onClick={() => !isCompressingProtoImage && protoImageInputRef.current?.click()}
+                  className="border border-dashed border-slate-200 hover:border-indigo-400 rounded-xl p-3 cursor-pointer bg-slate-50/50 flex items-center justify-between gap-3 text-xs text-slate-600 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <ImageIcon className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                    <span>{isCompressingProtoImage ? 'Optimizing image...' : 'Click to upload image file (auto-optimized)'}</span>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs bg-white">
+                    Browse
+                  </Button>
+                </div>
+
+                <div className="mt-2">
+                  <Input
+                    placeholder="Or paste image URL (https://...)"
+                    value={prototypeForm.imageUrl}
+                    onChange={(e) => setPrototypeForm({ ...prototypeForm, imageUrl: e.target.value })}
+                    className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl"
+                  />
+                </div>
+
+                {prototypeForm.imageUrl && (
+                  <div className="mt-2 relative w-full h-28 rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
+                    <img src={prototypeForm.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setPrototypeForm({ ...prototypeForm, imageUrl: '' })}
+                      className="absolute top-2 right-2 bg-black/70 hover:bg-black text-white text-[10px] px-2 py-0.5 rounded-md"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Key Features (one per line)</label>
+                <Textarea
+                  rows={3}
+                  placeholder="Dark/Light Mode&#10;Interactive Real-time Charts&#10;Stripe Billing Integration"
+                  value={prototypeForm.features}
+                  onChange={(e) => setPrototypeForm({ ...prototypeForm, features: e.target.value })}
+                  className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl font-mono text-[11px]"
+                />
+              </div>
+
+              <DialogFooter className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setPrototypeModalOpen(false)}
+                  className="text-xs rounded-xl"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={savePrototypeMutation.isPending}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-xl font-semibold shadow-xs"
+                >
+                  {savePrototypeMutation.isPending
+                    ? 'Saving...'
+                    : editingPrototypeId
+                    ? 'Update Prototype'
+                    : 'Add Prototype'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Employee Modal Dialog */}
+        <Dialog open={employeeModalOpen} onOpenChange={setEmployeeModalOpen}>
+          <DialogContent className="max-w-lg bg-white rounded-2xl p-6 text-slate-900 shadow-xl border border-slate-200">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold text-slate-900">
+                {editingEmployeeId ? 'Edit Employee' : 'Add New Employee'}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-500">
+                {editingEmployeeId
+                  ? 'Update employee role, department, credentials, or status.'
+                  : 'Create a new team member account with role permissions.'}
+              </DialogDescription>
+            </DialogHeader>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!employeeForm.name.trim()) return alert('Please enter name');
+                if (!employeeForm.email.trim()) return alert('Please enter email');
+                if (!editingEmployeeId && !employeeForm.password.trim()) return alert('Please enter password');
+                saveEmployeeMutation.mutate(employeeForm);
+              }}
+              className="space-y-4 pt-2"
+            >
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Full Name *</label>
+                <Input
+                  placeholder="e.g. Elena Rostova"
+                  value={employeeForm.name}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, name: e.target.value })}
+                  required
+                  className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Work Email *</label>
+                <Input
+                  type="email"
+                  placeholder="elena@eutian.com"
+                  value={employeeForm.email}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, email: e.target.value })}
+                  required
+                  className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  Password {editingEmployeeId ? '(leave blank to keep current)' : '*'}
+                </label>
+                <Input
+                  type="password"
+                  placeholder={editingEmployeeId ? '••••••••' : 'Minimum 6 characters'}
+                  value={employeeForm.password}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, password: e.target.value })}
+                  required={!editingEmployeeId}
+                  className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Role *</label>
+                  <Select
+                    value={employeeForm.role}
+                    onValueChange={(val: any) => setEmployeeForm({ ...employeeForm, role: val })}
+                  >
+                    <SelectTrigger className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl">
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200">
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="developer">Developer</SelectItem>
+                      <SelectItem value="sales">Sales</SelectItem>
+                      <SelectItem value="marketing">Marketing</SelectItem>
+                      <SelectItem value="intern">Intern</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Status</label>
+                  <Select
+                    value={employeeForm.status}
+                    onValueChange={(val: any) => setEmployeeForm({ ...employeeForm, status: val })}
+                  >
+                    <SelectTrigger className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200">
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Department</label>
+                <Input
+                  placeholder="e.g. Engineering & Architecture"
+                  value={employeeForm.department}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, department: e.target.value })}
+                  className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Notes / Assigned Tasks</label>
+                <Textarea
+                  rows={2}
+                  placeholder="Optional notes or current project assignments..."
+                  value={employeeForm.notes}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, notes: e.target.value })}
+                  className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl resize-none"
+                />
+              </div>
+
+              <DialogFooter className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEmployeeModalOpen(false)}
+                  className="text-xs rounded-xl"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={saveEmployeeMutation.isPending}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-xl font-semibold shadow-xs"
+                >
+                  {saveEmployeeMutation.isPending
+                    ? 'Saving...'
+                    : editingEmployeeId
+                    ? 'Update Employee'
+                    : 'Create Employee'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* ================= TAB: REVIEWS ================= */}
+        {activeTab === 'reviews' && (
+          <div className="space-y-6">
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Customer Reviews</h1>
+            <div className="bg-white border border-slate-200/90 rounded-2xl shadow-xs divide-y divide-slate-100">
+              {reviews.map((rev) => (
+                <div key={rev.id} className="p-5 flex items-center justify-between">
+                  <div>
+                    <h4 className="font-semibold text-slate-900 text-sm">
+                      {rev.name} <span className="text-amber-500 font-normal">{'★'.repeat(rev.rating)}</span>
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-1">{rev.message}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
-        </main>
-      </div>
+        {/* ================= TAB: SETTINGS ================= */}
+        {activeTab === 'settings' && (
+          <div className="space-y-6 max-w-2xl">
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Settings</h1>
+            <div className="bg-white border border-slate-200/90 p-6 rounded-2xl shadow-xs space-y-4">
+              <h3 className="font-bold text-sm text-slate-900">Platform Settings</h3>
+              <p className="text-xs text-slate-500">Configure global admin variables and notification preferences.</p>
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }

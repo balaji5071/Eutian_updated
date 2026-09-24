@@ -3,6 +3,14 @@ import clientPromise, { DB_NAME } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { Prototype, MediaItem } from '@/shared/schema';
 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+  },
+};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const client = await clientPromise;
@@ -93,44 +101,88 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json({ ok: true, message: `Seeded ${seedItems.length} prototypes successfully`, insertedCount });
       }
 
-      const { title, media, category, description, techStack, features } = req.body ?? {};
-      if (!title || !media || !Array.isArray(media) || media.length === 0 || !category || !description) {
-        return res.status(400).json({ ok: false, error: 'Missing required fields (media must be a non-empty array)' });
+      const { title, media, imageUrl, category, description, techStack, features } = req.body ?? {};
+      if (!title || !category || !description) {
+        return res.status(400).json({ ok: false, error: 'Title, category, and description are required' });
       }
+
+      let parsedMedia: MediaItem[] = [];
+      if (Array.isArray(media) && media.length > 0) {
+        parsedMedia = media.map((item: any, idx: number) => ({
+          type: item.type || 'image',
+          url: typeof item === 'string' ? item : item.url,
+          order: item.order ?? idx
+        }));
+      } else if (imageUrl) {
+        parsedMedia = [{ type: 'image', url: imageUrl, order: 0 }];
+      } else {
+        parsedMedia = [{
+          type: 'image',
+          url: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80',
+          order: 0
+        }];
+      }
+
+      const parsedTech = Array.isArray(techStack)
+        ? techStack
+        : typeof techStack === 'string'
+        ? techStack.split(',').map((s: string) => s.trim()).filter(Boolean)
+        : ['Next.js', 'React', 'Tailwind CSS'];
+
+      const parsedFeatures = Array.isArray(features)
+        ? features
+        : typeof features === 'string'
+        ? features.split('\n').map((s: string) => s.trim()).filter(Boolean)
+        : [];
+
       const doc: Prototype = {
         title,
-        media: media.map((item: any, idx: number) => ({
-          type: item.type || 'image',
-          url: item.url,
-          order: item.order ?? idx
-        })),
+        media: parsedMedia,
         category,
         description,
-        techStack: Array.isArray(techStack) ? techStack : [],
-        features: Array.isArray(features) ? features : [],
+        techStack: parsedTech,
+        features: parsedFeatures,
         createdAt: new Date(),
       };
       const result = await protos.insertOne(doc);
-      return res.status(201).json({ ok: true, id: result.insertedId.toString() });
+      return res.status(201).json({ ok: true, id: result.insertedId.toString(), item: { id: result.insertedId.toString(), ...doc } });
     }
 
     if (req.method === 'PATCH') {
-      const { id, ...updates } = req.body ?? {};
+      const { id, imageUrl, ...updates } = req.body ?? {};
       if (!id) return res.status(400).json({ ok: false, error: 'Missing id' });
       const clean: any = {};
-      ['title','media','category','description','techStack','features'].forEach((k) => {
-        if (updates[k] !== undefined) {
-          if (k === 'media' && Array.isArray(updates[k])) {
-            clean[k] = updates[k].map((item: any, idx: number) => ({
-              type: item.type || 'image',
-              url: item.url,
-              order: item.order ?? idx
-            }));
-          } else {
-            clean[k] = updates[k];
-          }
-        }
-      });
+      
+      if (updates.title !== undefined) clean.title = updates.title;
+      if (updates.category !== undefined) clean.category = updates.category;
+      if (updates.description !== undefined) clean.description = updates.description;
+
+      if (updates.media !== undefined && Array.isArray(updates.media)) {
+        clean.media = updates.media.map((item: any, idx: number) => ({
+          type: item.type || 'image',
+          url: typeof item === 'string' ? item : item.url,
+          order: item.order ?? idx
+        }));
+      } else if (imageUrl !== undefined) {
+        clean.media = [{ type: 'image', url: imageUrl, order: 0 }];
+      }
+
+      if (updates.techStack !== undefined) {
+        clean.techStack = Array.isArray(updates.techStack)
+          ? updates.techStack
+          : typeof updates.techStack === 'string'
+          ? updates.techStack.split(',').map((s: string) => s.trim()).filter(Boolean)
+          : [];
+      }
+
+      if (updates.features !== undefined) {
+        clean.features = Array.isArray(updates.features)
+          ? updates.features
+          : typeof updates.features === 'string'
+          ? updates.features.split('\n').map((s: string) => s.trim()).filter(Boolean)
+          : [];
+      }
+
       const result = await protos.updateOne({ _id: new ObjectId(id) }, { $set: clean });
       return res.status(200).json({ ok: true, modifiedCount: result.modifiedCount });
     }

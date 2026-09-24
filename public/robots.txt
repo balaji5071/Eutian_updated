@@ -1,8 +1,11 @@
 User-agent: *
 Allow: /
 
-# Prevent indexing of the admin area
+# Prevent indexing of administrative and private portals
 Disallow: /admin
 Disallow: /eutianadmin
+Disallow: /admin-login
+Disallow: /employee
+Disallow: /api/
 
-Sitemap: /sitemap.xml
+Sitemap: https://www.eutian.com/sitemap.xml
