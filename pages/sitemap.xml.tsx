@@ -40,11 +40,18 @@ function generateSiteMap(blogs: Array<{ slug: string; updatedAt?: string; publis
     <priority>${page.priority}</priority>
   </url>`).join('\n');
 
-  const blogUrls = blogs.map((blog) => {
+  const validBlogs = blogs.filter((b) => b && typeof b.slug === 'string' && b.slug.trim().length > 0);
+
+  const blogUrls = validBlogs.map((blog) => {
     const rawDate = blog.updatedAt || blog.publishedAt || blog.createdAt || currentDate;
-    const dateFormatted = new Date(rawDate).toISOString().split('T')[0];
+    let dateFormatted = currentDate;
+    try {
+      dateFormatted = new Date(rawDate).toISOString().split('T')[0];
+    } catch {
+      dateFormatted = currentDate;
+    }
     return `  <url>
-    <loc>${SITE_URL}/blog/${escapeXml(blog.slug)}</loc>
+    <loc>${SITE_URL}/blog/${escapeXml(blog.slug.trim())}</loc>
     <lastmod>${dateFormatted}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>

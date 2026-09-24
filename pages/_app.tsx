@@ -21,19 +21,19 @@ export default function MyApp({ Component, pageProps }: AppProps) {
   return (
     <QueryClientProvider client={queryClient}>
       <Head>
-        <title>Eutian — Modern Web, SaaS, AI Chatbots</title>
-        <meta name="description" content="Eutian builds high‑quality websites, SaaS dashboards, and AI chatbots. Fast delivery, clean code, and great UX. Get a quote today." />
+        <title key="title">Eutian — Modern Web, SaaS, AI Chatbots</title>
+        <meta key="description" name="description" content="Eutian builds high‑quality websites, SaaS dashboards, and AI chatbots. Fast delivery, clean code, and great UX. Get a quote today." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#0ea5e9" />
-        <meta property="og:type" content="website" />
-        <meta property="og:title" content="Eutian — Modern Web, SaaS, AI Chatbots" />
-        <meta property="og:description" content="Eutian builds high‑quality websites, SaaS dashboards, and AI chatbots. Fast delivery, clean code, and great UX." />
-        <meta property="og:url" content="/" />
-        <meta property="og:image" content="/og-image.png" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Eutian — Modern Web, SaaS, AI Chatbots" />
-        <meta name="twitter:description" content="Eutian builds high‑quality websites, SaaS dashboards, and AI chatbots." />
-        <meta name="twitter:image" content="/og-image.png" />
+        <meta key="og:type" property="og:type" content="website" />
+        <meta key="og:title" property="og:title" content="Eutian — Modern Web, SaaS, AI Chatbots" />
+        <meta key="og:description" property="og:description" content="Eutian builds high‑quality websites, SaaS dashboards, and AI chatbots. Fast delivery, clean code, and great UX." />
+        <meta key="og:url" property="og:url" content="/" />
+        <meta key="og:image" property="og:image" content="/og-image.png" />
+        <meta key="twitter:card" name="twitter:card" content="summary_large_image" />
+        <meta key="twitter:title" name="twitter:title" content="Eutian — Modern Web, SaaS, AI Chatbots" />
+        <meta key="twitter:description" name="twitter:description" content="Eutian builds high‑quality websites, SaaS dashboards, and AI chatbots." />
+        <meta key="twitter:image" name="twitter:image" content="/og-image.png" />
         <link rel="icon" href="/image.png" type="image/png" />
         <link rel="shortcut icon" href="/image.png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />

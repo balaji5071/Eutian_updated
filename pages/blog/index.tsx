@@ -2,8 +2,6 @@ import { useState, useMemo } from 'react';
 import { GetServerSideProps } from 'next';
 import Head from 'next/head';
 import Link from 'next/link';
-import Image from 'next/image';
-import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { 
   Search, 
@@ -11,41 +9,22 @@ import {
   Clock, 
   ArrowRight, 
   Sparkles, 
-  Tag, 
-  BookOpen, 
-  Filter 
+  BookOpen 
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import clientPromise, { DB_NAME } from '@/lib/mongodb';
-import { BlogPost } from '@/shared/schema';
-
-type BlogItem = Omit<BlogPost, '_id' | 'createdAt' | 'updatedAt' | 'publishedAt'> & { 
-  id: string; 
-  createdAt: string;
-  publishedAt?: string;
-  updatedAt?: string;
-};
+import { getAllPublishedBlogs, CleanBlogPost } from '@/lib/blogs';
 
 interface BlogIndexProps {
-  initialBlogs: BlogItem[];
+  initialBlogs: CleanBlogPost[];
 }
 
 export default function BlogIndex({ initialBlogs = [] }: BlogIndexProps) {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { data: blogs = initialBlogs, isLoading, isError } = useQuery<BlogItem[]>({
-    queryKey: ['public-blogs'],
-    queryFn: async () => {
-      const res = await fetch('/api/blogs');
-      const json = await res.json();
-      if (!json.ok) throw new Error(json.error || 'Failed to fetch blogs');
-      return json.items as BlogItem[];
-    },
-    initialData: initialBlogs,
-    staleTime: 60_000,
-  });
+  // SEO-first architecture: content comes directly from SSR props.
+  // No client-side fetch to /api/blogs, eliminating Googlebot robots.txt block warnings.
+  const blogs = initialBlogs;
 
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -87,16 +66,21 @@ export default function BlogIndex({ initialBlogs = [] }: BlogIndexProps) {
   return (
     <>
       <Head>
-        <title>Blog & Insights — Eutian</title>
+        <title key="title">Blog & Insights — Eutian</title>
         <meta
+          key="description"
           name="description"
           content="Explore articles, guides, and thoughts on AI engineering, modern SaaS architectures, and full-stack development by Eutian."
         />
         <link rel="canonical" href="https://www.eutian.com/blog" />
-        <meta property="og:title" content="Blog & Insights — Eutian" />
-        <meta property="og:description" content="Explore articles, guides, and thoughts on AI engineering, modern SaaS architectures, and full-stack development by Eutian." />
-        <meta property="og:url" content="https://www.eutian.com/blog" />
-        <meta property="og:type" content="website" />
+        <meta name="robots" content="index, follow, max-image-preview:large" />
+        <meta key="og:type" property="og:type" content="website" />
+        <meta key="og:title" property="og:title" content="Blog & Insights — Eutian" />
+        <meta key="og:description" property="og:description" content="Explore articles, guides, and thoughts on AI engineering, modern SaaS architectures, and full-stack development by Eutian." />
+        <meta key="og:url" property="og:url" content="https://www.eutian.com/blog" />
+        <meta key="twitter:card" name="twitter:card" content="summary_large_image" />
+        <meta key="twitter:title" name="twitter:title" content="Blog & Insights — Eutian" />
+        <meta key="twitter:description" name="twitter:description" content="Explore articles, guides, and thoughts on AI engineering, modern SaaS architectures, and full-stack development by Eutian." />
       </Head>
 
       <div className="flex flex-col min-h-screen bg-background">
@@ -158,22 +142,7 @@ export default function BlogIndex({ initialBlogs = [] }: BlogIndexProps) {
         {/* Content Section */}
         <section className="py-16 flex-1">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-24 text-center">
-                <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4" />
-                <p className="text-muted-foreground text-sm">Loading articles...</p>
-              </div>
-            ) : isError ? (
-              <div className="text-center py-20">
-                <p className="text-red-400 mb-2">Failed to load blog posts.</p>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="px-4 py-2 bg-primary/10 text-primary rounded-xl text-sm border border-primary/20"
-                >
-                  Try Again
-                </button>
-              </div>
-            ) : filteredBlogs.length === 0 ? (
+            {filteredBlogs.length === 0 ? (
               <div className="text-center py-20 bg-white/[0.02] border border-white/5 rounded-3xl p-12 max-w-xl mx-auto">
                 <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-60" />
                 <h3 className="font-heading font-bold text-xl text-white mb-2">No articles found</h3>
@@ -408,35 +377,7 @@ export default function BlogIndex({ initialBlogs = [] }: BlogIndexProps) {
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   try {
-    const client = await clientPromise;
-    const db = client.db(DB_NAME);
-    const blogsCollection = db.collection<BlogPost>('blogs');
-
-    const items = await blogsCollection
-      .find({ status: 'published' })
-      .sort({ createdAt: -1 })
-      .toArray();
-
-    const initialBlogs: BlogItem[] = items.map((b) => ({
-      id: b._id?.toString() || '',
-      title: b.title,
-      slug: b.slug,
-      excerpt: b.excerpt || '',
-      content: b.content || '',
-      coverImage: b.coverImage || '',
-      category: b.category || 'General',
-      tags: Array.isArray(b.tags) ? b.tags : [],
-      author: {
-        name: b.author?.name || 'Eutian Team',
-        role: b.author?.role || 'Author',
-        avatar: b.author?.avatar || '/image.png',
-      },
-      status: b.status || 'published',
-      readingTime: b.readingTime || '5 min read',
-      publishedAt: b.publishedAt ? new Date(b.publishedAt).toISOString() : undefined,
-      createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : new Date().toISOString(),
-      updatedAt: b.updatedAt ? new Date(b.updatedAt).toISOString() : undefined,
-    }));
+    const initialBlogs = await getAllPublishedBlogs();
 
     context.res.setHeader(
       'Cache-Control',
